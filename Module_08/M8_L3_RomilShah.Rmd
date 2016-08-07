@@ -1,0 +1,85 @@
+---
+title: "M8_L3_RomilShah"
+author: "Romil Shah"
+date: "July 18, 2016"
+output: word_document
+---
+
+```{r}
+library(RTextTools)
+library(e1071)
+library(qdap)
+library(tm)
+library(wordcloud)
+library(fpc)
+library(Matrix)
+
+mltweets <- read.csv(url("http://nikbearbrown.com/YouTube/MachineLearning/M08/ML.Tweets.csv"))
+
+mltweetsnew <- read.csv(url("http://nikbearbrown.com/YouTube/MachineLearning/M08/ML.Tweets.New.csv"))
+
+
+#Extract and rank important hashtags
+#Based on the patterns, the most imposrtant tweets are parsed
+pattern <- "#[a-zA-Z0-9_]"
+dtm <- create_matrix(mltweets,stemWords = TRUE,removeStopwords = FALSE,minWordLength = 1,removePunctuation = FALSE)
+dtm.sparsefull <- removeSparseTerms(dtm,sparse=0.99)
+dtm.sparse <- dtm.sparsefull[,2:15]
+dtminspect <- inspect(dtm.sparse)
+hash <- dtm.sparse$dimnames$Terms
+#Thus the hashtags are:
+hash
+#This is done on the basis of the sparse terms with sparsing at 0.99
+
+
+#Cluster tweets using above hashtags
+d <- dist(t(dtm.sparse),method="euclidean")
+fit <- hclust(d=d,method="ward.D2")
+plot(fit,hang=-1)
+groups <- cutree(fit,10)
+rect.hclust(fit,k=10,border='blue')
+#The plot can be seen which is clustered into 5 parts based on their height and order
+
+
+#Cluster names
+#Using heirarchical clustering for the hashtags
+x<-cbind(t(dtm.sparse),groups)
+bigdata <- subset(x,groups==1)
+analyt <- subset(x,groups==2)
+iot <- subset(x,groups==3)
+datasci <- subset(x,groups==4)
+job <- subset(x,groups==5)
+machinelearn <- subset(x,groups==6)
+hadoop <- subset(x,groups==7)
+data <- subset(x,groups==8)
+cloud <- subset(x,groups==9)
+other <- subset(x,groups==10)
+#Cluster names are given
+
+
+#Classsify tweets new
+dtmnew <- create_matrix(mltweetsnew,stemWords = TRUE,removeStopwords = FALSE,minWordLength = 1,removePunctuation = FALSE)
+dtm.sparsefullnew <- removeSparseTerms(dtmnew,sparse=0.99)
+dtminspectnew <- inspect(dtm.sparsefullnew)
+
+temp <- inspect(dtm.sparsefull)
+temprows <- rowSums(temp)
+normtemprows <-round((temprows-min(temprows))*9/(max(temprows)-min(temprows)))+1
+
+classifier <- naiveBayes(dtminspect, as.factor(normtemprows))
+classifieddata <- predict(classifier, dtminspectnew)
+#Initially I had a problem in classifying the data but then I understood the way. Here the new ml tweets are classified based on the prominent hashtags in the ml tweets. It seems the new ml tweets are classified as 'others' but it might be true as they would be different from the ml tweets.
+#Here the classification is as follows: 1-bigdata, 2-analyt, 3-iot, 4-datasci, 5-job, 6-machinelarn, 7-hadoop, 8-data, 9-cloud and 10-others
+classifieddata
+
+
+#Polarity
+ps <- polarity(mltweets[1:1000,1])
+#scoring for all takes more than 25 minutes thus I am scoring the first 1000. I know it is less but it atleast gives a sense of the data and how this function works in R. Printing all:
+ps
+ps$all
+
+
+#A custom polarity frame of positive-negative wirds and weights would be really helpful in the polarity score. This is because based on the data, the words can be chosen and wieghts can be alotted which would definitely improve the score.
+#This was done when classifying positive and negative tweets in the L2 and would have a similar approach. I tried doing it as a dataframe but could not come up with a better method than simply applying for-loops.
+```

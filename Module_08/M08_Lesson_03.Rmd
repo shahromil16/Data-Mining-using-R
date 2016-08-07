@@ -1,0 +1,329 @@
+---
+title: "Sentiment Analysis in R"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson we will by applying various algorithms to sentiment analysis.  Sentiment refers to feelings and emotions. Sentiment analysis aims to determine the emotional state of a user at the time s/he contributes some content. Sentiment analysis is a very active field as much of the data from the Internet is text. Social networks, in particular are rich sources of opinion and sentiment.
+
+
+![NetBase 2012 Election Mood Meter](http://nikbearbrown.com/YouTube/MachineLearning/M08/2012-election-mood-meter.png)    
+NetBase 2012 Election Mood Meter [http://www.netbase.com/all-posts/2012-election-mood-meter/](http://www.netbase.com/all-posts/2012-election-mood-meter/])
+
+
+# Additional packages needed
+ 
+To run the code in M08_Lesson_03.Rmd you may need additional packages.
+
+* If necessary install the followings packages.
+
+`install.packages("RTextTools");`
+`install.packages("e1071");`
+`install.packages("qdap");`
+
+```{r}
+library(RTextTools)
+library(e1071)
+library(qdap)
+```
+
+
+# Data
+
+We will be using a dataframe of tweets taggged as "postive" or "negative."  
+
+# Sentiment Analysis
+
+Sentiment refers to feelings and emotions. [Sentiment analysis](https://en.wikipedia.org/wiki/Sentiment_analysis) aims to determine the attitude of a speaker or a writer with respect to some topic or the overall contextual polarity some text. Sentiment analysis including news, social networking and blogs is used for monitoring trends and opinions. 
+
+A basic task in sentiment analysis is classifying the polarity of a given text at the document, sentence, or feature/aspect level — whether the expressed opinion in a document, a sentence or an entity feature/aspect is positive, negative, or neutral. Other forms of sentiment analysis comes in the form of sentiment classification which often tags text with emotional states such as "angry," "sad," and "happy."
+
+Existing approaches to sentiment analysis can be grouped into four main categories: keyword spotting, lexical affinity, and statistical methods. Keyword spotting classifies text by affect categories based on the presence of unambiguous affect words such as happy, sad, afraid, and bored.Lexical affinity not only detects obvious affect words, it also assigns arbitrary words a probable “affinity” to particular emotions. Statistical methods leverage classication and clustering techniques to tag and group text according to emotional state. 
+
+![Twitter Mood](http://nikbearbrown.com/YouTube/MachineLearning/M08/Twitter_Sentiment_Analysis.png)
+
+![Pulse of the Nation](http://nikbearbrown.com/YouTube/MachineLearning/M08/Pulse_of_the_Nation.png)    
+Pulse of the Nation: U.S. Mood Throughout the Day inferred from Twitter
+by Alan Mislove, Sune Lehmann, Yong-Yeol Ahn, Jukka-Pekka Onnela, J. Niels Rosenquist. [http://www.ccs.neu.edu/home/amislove/twittermood/](http://www.ccs.neu.edu/home/amislove/twittermood/)
+
+# Sentiment Classification in R  
+
+The classifier takes a list of word features (tags) need to be extracted from the tweets. It is a list with every distinct words ordered by frequency of appearance.
+We'll get better results if we To create a classifier, we need to decide what tags are relevant as some tags like 'the' are frequent but not informative. Common methods for weighting tag relevancy are tf-idf and word entropy.  
+
+We have our choice of many classifiers for text classification. The Naive Bayes classifier uses the prior probability of each label which is the frequency of each label in the training set, and the contribution from each feature.
+
+```{r}
+pos_tweets = rbind(
+  c("A great SEO strategy", "positive"),
+  c("A happy #gamedev day :)", "positive"),
+  c("A lot of teams don 't even score 62 in a game let alone a half", "positive"),
+  c("A quad and a shot in one game Nice :)", "positive"),
+  c("A wonderful team wonderful fans - my first CL-game at home was unbeleavable Thanks all :)", "positive"),
+  c("Absolutely amazing game by @celtics tonight So proud definitely deserved player ", "positive"),
+  c("Absolutely buzzing for WEMBLEY Great game fantastic atmosphere well done", "positive"),
+  c("Absolutely loved this cup run and will remember the Chelsea game forever Now let's go get promotion #bcafc", "positive"),
+  c("All I can think about it the game :)", "positive"),
+  c("All I know is I will be attending this game :)", "positive"),
+  c("All I'm saying is it better not rain on Tuesday it's a big game ", "positive"),
+  c("All I need in my life is game of thrones", "positive"),
+  c("All I wanna do is play my game again  :) http://t co/M6LxY36iB2", "positive"),
+  c("All I want in the world is to be at the hockey game right now ", "positive"),
+  c("All I want is to watch every single game this year =)", "positive"),
+  c("all I want to do is watch game of thrones with some ice cream=)", "positive"),
+  c("All is going good", "positive"),
+  c("All star game in Toronto next year Wow ", "positive"),
+  c("Brady haha What a game he has had =)", "positive"),
+  c("Brady has actually been boss this game tbf =)", "positive"),
+  c("Brady has been immense this entire game", "positive"),
+  c("Brady has done well this game", "positive"),
+  c("Brady has had a good game here #LFC ", "positive"),
+  c("Already losing my voice because this game is going perfect", "positive"),
+  c("Alright #Flyers D it up and close out this game ", "positive"),
+  c("Amazing article This is so true ", "positive"),
+  c("Amazing Day at work followed by an amazing netball game #lovelife #ThisGirlCan #eventprofs", "positive"),
+  c("And you love the game   #TaylorSwift", "positive"),
+  c("As I've said you can never have too many rainbows =)", "positive"),
+  c("Best game of my life =)", "positive"),
+  c("Best game of the year hands down going on", "positive"),
+  c("Best game the Blackhawks have played in a long time I hope @spenceelginge1 stays in China for good luck", "positive"),
+  c("Congrats @celtics brilliant win Fab game onwards and upwards #proudsponsors", "positive"),
+  c("Cool little virtual pin from Nintendo ", "positive"),
+  c("cool math game: divide someone's # following by their # of followers that 's the top % of their followers that they don 't think you 're in ", "positive"),
+  c("cool new drinking game called take a shot every time someone has a snapchat story with the temperature stamp on it #blacked", "positive"),
+  c("Excited for my very first hockey game ", "positive"),
+  c("Excited for our game", "positive"),
+  c("Good game today Kobe had 20", "positive"),
+  c("I love this team Go Bruins!", "positive"),
+  c("I love this song", "positive"),
+  c("I love this song Miley #Miley =)", "positive"),  
+  c("The Internet is amazing =)", "positive"), 
+  c("I feel great", "positive"), 
+  c("I am so excited about the Miley concert =)",  "positive"), 
+  c("She is my best friend", "positive"))
+neg_tweets = rbind(
+  c("Am I the only girl who hates game of thrones?", "negative"),  
+  c("I hate Unity 5  #Unity5", "negative"),  
+  c("You just sit in a room and eat the entirety of a package of Mac and cheese on your own ", "negative"),
+  c("A word of warning about Unity 5 development #gamedev", "negative"),
+  c("Adam Sandler is back to destroy some treasured video game memories in Pixels http://t co/1dIvLj8YYf", "negative"),
+  c("Adam Sandler is back to destroy some treasured video game memories in Pixels http://t co/DYhvkbICqD", "negative"),
+  c("An absolute joke that someone who takes a hopeless 1-4 team to the playoffs then beats #1 defense doesn 't get to start another NFL game", "negative"),
+  c("As if the game wasn 't bad enough", "negative"),
+  c("Boise State is choking this game away ", "negative"),
+  c("Bradford had been pretty poor all game knew they would never win this one ", "negative"),
+  c("Bradford have hardly been in this game", "negative"),
+  c("Bradford have outsung Reading all game even at 3-0 down  Proper Yorkshire folk ", "negative"),
+  c("Can't afford to lose another game #Celtics", "negative"),
+  c("Cliff Lee will never pitch another game in MLB ", "negative"),
+  c("Crushing blow for Boise State which has never won an NCAA tournament game ", "negative"),
+  c("crying at this game, why? why?  #Celtics", "negative"),
+  c("Crying at game now So EMO #Celtics", "negative"),
+  c("Denver is resting three starters against their wishes in order to lose a game basically (Ball Don 't Lie): The http://t co/0gfKPKumAg", "negative"),
+  c("Dirty players and cheating take the love out of the game #enoughsaid", "negative"),
+  c("Celtics has had a poor game #Celtics", "negative"),
+  c("Celtics having an sucky type game #Poor ", "negative"),
+  c("Celtics having an awful game today ", "negative"),
+  c("This game sucked Sorry St Patrick #Celtics", "negative"),
+  c("this game sucks none of the Celtics players have even kissed yet", "negative"),
+  c("I do not like this song", "negative"),
+  c("This song is horrible", "negative"), 
+  c("I feel so tired", "negative"),
+  c("I am not looking forward to the concert", "negative"),
+  c("She sucks", "negative"))
+
+test_tweets = rbind(
+  c("Celtics are having a very poor game here", "negative"),
+  c("Celtics worst game by far tonight", "negative"),
+  c("Celtics positioning is awful so far this game ", "negative"),
+  c("The Celtics game is so frustrating", "negative"),
+  c("The Celtics game ticks me off sucks", "negative"),
+  c("This game still sucks", "negative"),
+  c("feel happy this morning", "positive"),
+  c("Adam Sandler sucks in Pixels #TheVerge", "negative"),
+  c("Adam Sandler is terrible in Pixels", "negative"),
+  c("all I can think about is us losing our 2nd playoff game", "negative"),
+  c("Excited for our game against LP tmrrw ", "positive"),
+  c("Excited for the Barca game tomorrow and el clasico over the weekend", "positive"),
+  c("Excited for the game tmrw with my girls  miss everyone @_Jessalynnnn @jaceyjoseph @Eearick19 @shelbynadine96", "positive"),
+  c("Good game today by far congratulations", "positive"),
+  c("Amazing game #B1GTEN", "positive"),
+  c("amazing game between miami and cleveland ", "positive"),
+  c("And you love the game", "positive"))
+tweets = rbind(pos_tweets, neg_tweets, test_tweets)
+tweets
+summary(tweets)
+length(tweets[,1])
+length(test_tweets[,1])
+# naive bayes
+matrix = create_matrix(tweets[, 1], language = "english", removeStopwords = FALSE, 
+                       removeNumbers = TRUE, stemWords = FALSE, tm::weightTfIdf)
+mat = as.matrix(matrix)
+mat
+n<-length(tweets[,1])
+n
+train.n<-length(tweets[,1])-length(test_tweets[,1])
+train.n
+mat[1:train.n, ]
+classifier <- naiveBayes(mat[1:train.n, ], as.factor(tweets[1:train.n, 2]))
+predicted <- predict(classifier, mat[(train.n+1):n, ])
+predicted
+table(tweets[(train.n+1):n, 2], predicted)
+recall_accuracy(tweets[(train.n+1):n, 2], predicted)
+```
+
+Of course we can use other classification methods. As well as clustering methods. 
+
+```{r}
+# Other classification methods.
+container = create_container(matrix, as.numeric(as.factor(tweets[, 2])), trainSize = 1:train.n, 
+                             testSize = (train.n+1):n, virgin = FALSE)  #removeSparseTerms
+models = train_models(container, algorithms = c("MAXENT", "SVM", "RF", "BAGGING", 
+                                                "TREE"))
+results = classify_models(container, models)
+# accuracy
+table(as.numeric(as.factor(tweets[(train.n+1):n, 2])), results[, "FORESTS_LABEL"])
+table(as.numeric(as.factor(tweets[(train.n+1):n, 2])), results[, "MAXENTROPY_LABEL"])
+recall_accuracy(as.numeric(as.factor(tweets[(train.n+1):n, 2])), results[, "FORESTS_LABEL"])
+recall_accuracy(as.numeric(as.factor(tweets[(train.n+1):n, 2])), results[, "MAXENTROPY_LABEL"])
+recall_accuracy(as.numeric(as.factor(tweets[(train.n+1):n, 2])), results[, "TREE_LABEL"])
+recall_accuracy(as.numeric(as.factor(tweets[(train.n+1):n, 2])), results[, "BAGGING_LABEL"])
+recall_accuracy(as.numeric(as.factor(tweets[(train.n+1):n, 2])), results[, "SVM_LABEL"])
+# model summary
+analytics = create_analytics(container, results)
+summary(analytics)
+head(analytics@document_summary)
+analytics@ensemble_summary
+N = 4
+set.seed(333 )
+cross_validate(container, N, "MAXENT")
+cross_validate(container, N, "TREE")
+cross_validate(container, N, "SVM")
+cross_validate(container, N, "RF")
+```
+
+# R package "qdap" (polarity)
+
+The R package "qdap" automates many of the tasks associated with quantitative discourse analysis of transcripts containing discourse including polarity, frequency counts of sentence types, words, sentences, turns of talk, syllables and other assorted analysis tasks.
+
+While qdap has many functions for tasks like check spelling, discourse maps, stemmers, parts of speech and the like; this lesson will fucus of the use of qdap for polarity using the function polarity.
+
+## polarity {qdap} 
+
+polarity - Approximate the sentiment (polarity) of text by grouping variable(s).
+
+## Usage  
+
+```
+polarity(text.var, grouping.var = NULL,
+  polarity.frame = qdapDictionaries::env.pol,
+  negators = qdapDictionaries::negation.words,
+  amplifiers = qdapDictionaries::amplification.words,
+  deamplifiers = qdapDictionaries::deamplification.words,
+  question.weight = 0, amplifier.weight = 0.8, n.before = 4,
+  n.after = 2, rm.incomplete = FALSE, digits = 3, ...)
+
+polarity_frame(positives, negatives, pos.weights = 1, neg.weights = -1,
+  envir = TRUE)
+```
+## Arguments
+
+text.var - The text variable.  
+grouping.var - The grouping variables. Default NULL generates one word list for all text. Also takes a single grouping variable or a list of 1 or more grouping variables.  
+polarity.frame - A dataframe or environment containing a dataframe of positive/negative words and weights.  
+negators - A character vector of terms reversing the intent of a positive or negative word.  
+amplifiers -A character vector of terms that increase the intensity of a positive or negative word.  
+deamplifiers - A character vector of terms that decrease the intensity of a positive or negative word.   
+question.weight - The weighting of questions (values from 0 to 1). Default 0 corresponds with the belief that questions (pure questions) are not polarized. A weight may be applied based on the evidence that the questions function with polarity.  
+amplifier.weight - The weight to apply to amplifiers/deamplifiers (values from 0 to 1). This value will multiply the polarized terms by 1 + this value.  
+n.before - The number of words to consider as valence shifters before the polarized word.  
+n.after - The number of words to consider as valence shifters after the polarized word.  
+rm.incomplete - logical. If TRUE text rows ending with qdap's incomplete sentence end mark (|) will be removed from the analysis.  
+digits - Integer; number of decimal places to round when printing.  
+
+## Details of the polarity algorithm
+
+The equation used by the algorithm to assign value to polarity of each sentence fist utilizes the sentiment dictionary (Hu and Liu, 2004) to tag polarized words. A context cluster ($x_i^{T}$) of words is pulled from around this polarized word (default 4 words before and two words after) to be considered as valence shifters. The words in this context cluster are tagged as neutral ($x_i^{0}$), negator ($x_i^{N}$), amplifier ($x_i^{a}$), or de-amplifier ($x_i^{d}$). Neutral words hold no value in the equation but do affect word count (n). Each polarized word is then weighted w based on the weights from the polarity.frame argument and then further weighted by the number and position of the valence shifters directly surrounding the positive or negative word. The researcher may provide a weight c to be utilized with amplifiers/de-amplifiers (default is .8; deamplifier weight is constrained to -1 lower bound). Last, these context cluster ($x_i^{T}$) are summed and divided by the square root of the word count ($\sqrt{n}$) yielding an unbounded polarity score ($\delta$). Note that context clusters containing a comma before the polarized word will only consider words found after the comma.
+
+$\delta=\frac{x_i^T}{\sqrt{n}}$  
+
+Where:
+  
+$x_i^{A}=\sum{(w_{neg}\cdot x_i^{a})}$  
+
+$x_i^{D}=\sum{(- w_{neg}\cdot x_i^{a} + x_i^{d})}$  
+
+## Values
+
+The polarity function returns a list of:
+
+all - A dataframe of scores per row with: 
+group.var - the grouping variable  
+wc - word count  
+polarity - sentence polarity score  
+pos.words - words considered positive  
+neg.words - words considered negative  
+text.var - the text variable  
+
+group - A dataframe with the average polarity score by grouping variable:  
+group.var - the grouping variable  
+total.sentences - Total sentences spoken.  
+total.words - Total words used.  
+ave.polarity - The sum of all polarity scores for that group divided by number of sentences spoken.  
+sd.polarity - The standard deviation of that group's sentence level polarity scores.  
+stan.mean.polarity - A standardized polarity score calculated by taking the average polarity score for a group divided by the standard deviation.  
+
+digits - integer value of number of digits to display; mostly internal use  
+
+
+```{r}
+tweets
+text <- tweets[,c(1)]
+head(text)
+length(text)
+ps <- polarity(text)
+ps
+ps$all
+```
+
+# Assingment
+
+* Load the file ML.Tweets.csv and ML.Tweets.New.csv (it is online at  'http://nikbearbrown.com/YouTube/MachineLearning/M08/ML.Tweets.csv' and 'http://nikbearbrown.com/YouTube/MachineLearning/M08/ML.Tweets.New.csv' )    
+* Do the following with ML.Tweets.csv:   
+    * Extract and rank a list of the important hashtags (using td-idf or word entropy)   
+    * Cluster the tweets using these hashtags .    
+    * Optional - give the the clusters names based on their dominant hashtags.   
+    * Classify the tweets in ML.Tweets.New.csv using the cluster lables generated from ML.Tweets.csv.  
+    * Use the qdap polarity function to score the polarity of the tweets in ML.Tweets.csv.        
+    * Would creating a custom polarity.frame - A dataframe or environment containing a dataframe of positive/negative words and weights - based on the tags and words in these tweets improve the polarity score? Try it.    
+
+Write up your report as an .Rmd file.   
+  
+# Resources   
+
+* [First shot: Sentiment Analysis in R : Andy Bromberg](http://andybromberg.com/sentiment-analysis/)      
+* [Sentiment Analysis with "sentiment"](https://sites.google.com/site/miningtwitter/questions/sentiment/sentiment)    
+ 
+* [Sentiment analysis with machine learning in R](http://chengjun.github.io/en/2014/04/sentiment-analysis-with-machine-learning-in-R/)    
+
+* [Sentiment Analysis with R - - iHub](http://www.ihub.co.ke/blogs/23216)    
+
+* [RPubs - Sentiment analysis using machine learning in R](http://rpubs.com/chengjun/sentiment)      
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

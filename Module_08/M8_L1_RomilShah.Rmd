@@ -1,0 +1,63 @@
+---
+title: "M8_L1_RomilShah"
+author: "Romil Shah"
+date: "July 16, 2016"
+output: word_document
+---
+
+```{r}
+library(RTextTools)
+library(tm)
+library(wordcloud)
+
+seuss <- c("You have brains in your head.",
+           "You have feet in your shoes.", 
+           "You can steer yourself any direction you choose.",
+           "You're on your own.", 
+           "And you know what you know.", 
+           "And YOU are the one who'll decide where to go...",
+           "- Dr. Seuss")
+
+#Term by Document matrix
+myCorpus <- Corpus(VectorSource(seuss))
+myTDM <- t(TermDocumentMatrix(myCorpus))
+inspect(myTDM)
+#Assuming each sentence is a separate document, the term by document matrix is formed. We can observe the number of times a word comes in each document.
+
+
+#Calculate td-tdf for three terms
+terms <- DocumentTermMatrix(myCorpus,control=list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
+mtx <- as.matrix(terms)
+frequency <- sort(colSums(mtx), decreasing = TRUE)
+
+tdidf.brains <- frequency[4]
+tdidf.feet <- frequency[13]
+tdidf.your <- frequency[1]
+tdidf.brains
+tdidf.feet
+tdidf.your
+#Here the td-idf for 3 terms is calculated using the document term matrix and finding the frequency probability of each. Here I have obtained the td-idf for 'brain', 'feet' and 'you' terms.
+
+
+#Regex for segmenting into separate sentences
+seuss_sent <- c("You have brains in your head.You have feet in your shoes.You can steer yourself any direction you choose.You're on your own.And you know what you know.And YOU are the one who'll decide where to go...- Dr. Seuss")
+sentences <- strsplit(seuss, "[.]+")
+sentences
+#Regular expression to separate into sentences. This is done on the basis of splitting when '.' is encountered in the paragraph.
+
+
+#Tokenize quote
+tokens <- strsplit(seuss_sent, " ")
+tokens
+#Tokenization is done by splitting the sentences into different words on based on spaces between them. Thus when a space is found, it is split into the resultant words.
+
+
+#Frequency Signature
+temp <- inspect(myTDM)
+freqsign <- data.frame(ST=rownames(temp),Freq = rowSums(temp))
+row.names(freqsign) <- NULL
+freqsign
+#The total frequncy of each word in the documents is obtained and then added together in order to find the frequency signature of the documents for the quote.
+
+```
+

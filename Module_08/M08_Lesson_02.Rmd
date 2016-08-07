@@ -1,0 +1,472 @@
+---
+title: "Text mining in R"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson we'll learn regular expressions and how to use the 'tm' package in R.
+
+
+# Additional packages needed
+ 
+To run the code in M08_Lesson_02.Rmd you may need additional packages.
+
+* If necessary install the followings packages.
+
+`install.packages("RTextTools");`   
+`install.packages("tm");`   
+`install.packages("wordcloud);` 
+
+```{r}
+library(RTextTools)
+library(tm)
+library(wordcloud)
+```
+
+
+# Data
+
+We will be using the [Wisconsin Diagnostic Breast Cancer Dataset from UC Irvine](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)), as well as Dr Suess quotes.
+
+# Regular Expressions and Grep
+
+In theoretical computer science and formal language theory, a [regular expression](https://en.wikipedia.org/wiki/Regular_expression) (abbreviated regex or regexp and sometimes called a rational expression) is a sequence of characters that define a search pattern, mainly for use in pattern matching with strings, or string matching, i.e. "find and replace"-like operations. The concept arose in the 1950s, when the American mathematician Stephen Kleene formalized the description of a regular language, and came into common use with the Unix text processing utilities ed, an editor, and [grep](https://en.wikipedia.org/wiki/Grep) (global regular expression print), a filter.
+
+grep is a command-line utility for searching plain-text data sets for lines matching a regular expression. Grep was originally developed for the Unix operating system, but is available today for all Unix-like systems and is built in to languages like python and Perl.
+
+# Regular Expressions Examples
+
+Basic regex syntax
+
+```
+.	Normally matches any character except a newline.  
+
+When you match a pattern within parentheses, you can use any of $1, $2, ... later to refer to the previously matched pattern.	
+
++	Matches the preceding pattern element one or more times.  	
+?	Matches the preceding pattern element zero or one times.  	
+*	Matches the preceding pattern element zero or more times.  
+|	Separates alternate possibilities.	 
+
+\w	Matches an alphanumeric character, including "_";  same as [A-Za-z0-9_] in ASCII, and
+[\p{Alphabetic}\p{GC=Mark}\p{GC=Decimal_Number}\p{GC=Connector_Punctuation}]  
+
+\W	Matches a non-alphanumeric character, excluding "_";
+same as [^A-Za-z0-9_] in ASCII, and
+[^\p{Alphabetic}\p{GC=Mark}\p{GC=Decimal_Number}\p{GC=Connector_Punctuation}]  
+
+\s	Matches a whitespace character,
+which in ASCII are tab, line feed, form feed, carriage return, and space;  
+
+\S	Matches anything BUT a whitespace.	 
+
+\d	Matches a digit;
+same as [0-9] in ASCII;  
+
+\D	Matches a non-digit;
+
+^	Matches the beginning of a line or string.	  
+
+$	Matches the end of a line or string.	  
+```
+
+Some simple regex examples 
+
+```
+ {^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$}  # Floating Point Number
+
+{^[A-Za-z]+$}   # Only letters.
+
+ {^[[:alpha?:]]+$} # Only letters, the Unicode way.
+
+ {(.)\1{3}} $string {\1} result # Back References 
+
+(\[0-9]{1,3})\.(\[0-9]{1,3})\.(\[0-9]{1,3})\.(\[0-9]{1,3}) # IP Numbers 
+```
+
+# Regular Expressions in R
+
+```{r}
+letters
+grep("[a-z]", letters)
+grep("[A-Z]", letters)
+grep("[AB]", letters)
+grep("[AB]", letters,ignore.case = TRUE)
+grep("[a-zA-Z]", letters)
+grep("[azAZ]", letters)
+seuss <- c("You have brains in your head.",
+           "You have feet in your shoes.", 
+           "You can steer yourself any direction you choose.",            
+           "You're on your own.", 
+           "And you know what you know.", 
+           "And YOU are the one who'll decide where to go...",            
+           "- Dr. Seuss")
+grep("you", seuss)
+if(length(i <- grep("in", seuss)))
+  cat("'in' appears at least once in\n\t", seuss[i], "\n")
+i # 1 and 2
+seuss[i]
+
+ ## Modify all 'a' or 'b's;  "\" must be escaped 
+s<-gsub("([ab])", "\\1-z\\1_s", "abc vs, ABC  - Oh, A B C. It's easy as, 1 2 3. As simple as, do re mi. a b c, 1 2 3")
+s
+s<-gsub("([ab])", "-z_s", "abc vs, ABC  - Oh, A B C. It's easy as, 1 2 3. As simple as, do re mi. a b c, 1 2 3")
+s
+s<-gsub("([ab])", "\\a\\b", "abc vs, ABC  - Oh, A B C. It's easy as, 1 2 3. As simple as, do re mi. a b c, 1 2 3")
+s
+stop.words <- c("The", "for", "are",
+          "to",  "your", 
+         "to", "and", "the", 
+         "is", "your",  "and", "is",
+         "it", "for", "all", "its", "it's")
+
+seuss.re<-regexpr("[ ]+",seuss)
+seuss.re
+seuss.re<-gregexpr("[ ]+",seuss)
+seuss.re
+
+
+## trim trailing white space
+str <- " You have brains in your head      "
+str
+str<-sub("[ ]+$", "", str)  ## trailing spaces only
+str
+str<-sub("^[ ]+", "", str)  ## leading spaces only
+str
+sub("[[:space:]]+$", "", str) ## white space, POSIX-style
+sub("\\s+$", "", str, perl = TRUE) ## Perl-style white space
+
+## capitalizing
+txt <- "You have brains in your head"
+gsub("(\\w)(\\w*)", "\\U\\1\\L\\2", txt, perl=TRUE)
+gsub("\\b(\\w)",    "\\U\\1",       txt, perl=TRUE)
+
+txt2 <- "You have feet in your shoes."
+gsub("(\\w)(\\w*)(\\w)", "\\U\\1\\E\\2\\U\\3", txt2, perl=TRUE)
+sub("(\\w)(\\w*)(\\w)", "\\U\\1\\E\\2\\U\\3", txt2, perl=TRUE)
+
+## Decompose a URL into its components.
+url <- "http://nikbearbrown/machine/learning/"
+m <- regexec("^(([^:]+)://)?([^:/]+)(:([0-9]+))?(/.*)", url)
+m
+regmatches(url, m)
+## parts of a URL:
+URL_parts <- function(u) {
+  m <- regexec("^(([^:]+)://)?([^:/]+)(:([0-9]+))?(/.*)", u)
+  parts <- do.call(rbind,
+                   lapply(regmatches(u, m), `[`, c(3L, 4L, 6L, 7L)))
+  colnames(parts) <- c("protocol","host","port","path")
+  parts
+}
+URL_parts(url)
+
+# Spilt text
+seuss
+seuss[1]
+sp<-strsplit(seuss[1], "a") # "You have brains in your head."
+s<-"You    have   brains  in  your head. "
+sp<-strsplit(seuss[1], " ") 
+sp
+sp<-strsplit(s," ") 
+sp
+sp<-strsplit(s,"[ ]+") 
+sp
+sp<-strsplit(s,"[ ]+",perl = TRUE) 
+sp
+```
+
+# Text Mining in R (tm package)  
+
+The main structure for managing documents in tm is a so-called Corpus, representing a collection of text
+documents. Custom print() methods are available which hide the raw amount of information since displaying a lot of text can hide other data.  
+
+## Transformations
+
+Once we have a corpus we typically want to modify the documents in it, e.g., stemming, stopword removal,
+et cetera. In tm, all this functionality is subsumed into the concept of a transformation. Transformations are
+done via the tm_map() function which applies (maps) a function to all elements of the corpus.  
+
+## Creating Term-Document Matrices
+
+A common approach in text mining is to create a term-document matrix from a corpus. In the tm package
+the classes TermDocumentMatrix and DocumentTermMatrix (depending on whether you want terms as rows and
+documents as columns, or vice versa) employ sparse matrices for corpora.  
+
+##  Functions for Term-Document Matrices
+
+The tm package has a number of operations for Term-Document Matrices (like clustering, classifications, etc.).   
+
+For example, given a Term-Document matrix called $tdm$
+
+*  findFreqTerms(tdm, 5) # finds terms with all least 5 counts   
+*  findAssocs(tdm, "brain", 0.8) # finds associations (i.e., terms which correlate) with at least 0.8 correlation for the term  "brain"  
+
+```{r}
+# Introduction to the tm Package
+seuss <- c("You have brains in your head.",
+           "You have feet in your shoes.", 
+           "You can steer yourself any direction you choose.",            
+           "You're on your own.", 
+           "And you know what you know.", 
+           "And YOU are the one who'll decide where to go...",    
+           "Today you are you, that is truer than true. There is no one alive who is youer than you. - Dr. Seuss",
+           "Don't cry because it's over. Smile because it happened. - Dr. Seuss",       
+           "Unless someone like you cares a whole awful lot, nothing is going to get better. It's not. - Dr. Seuss",
+           "A person's a person, no matter how small. - Dr. Seuss",       
+           "Today is your day! Your mountain is waiting so get on your way! - Dr. Seuss", 
+           "You're never too old, too wacky, too wild, to pick up a book and read to a child. - Dr. Seuss",
+           "The more that you read, the more things you will know. The more that you learn, the more places you'll go. - Dr. Seuss",
+           "Oh the things you can find if you don't stay behind! - Dr. Seuss",
+           "And turtles, of course. all the turtles are FREE. As turtles and, maybe, ALL creatures should be. - Dr. Seuss",
+           "With your head full of brains and your shoes full of feet, you're too smart to go down any not-so-good street. - Dr. Seuss",
+           "You're on your own. And you know what you know. And you're the one who'll decide where to go. - Dr. Seuss", 
+           "Sometimes the questions are complicated and the answers are simple. - Dr. Seuss",
+           "You do not like them. So you say. Try them! Try them! And you may! - Dr. Seuss",
+           "You have brains in your head, you have feet in your shoes. You can steer yourself any direction you choose. - Dr. Seuss",
+           "If things start happening, don't worry. Don't stew. Just go right along. You'll start happening too. - Dr. Seuss", 
+           "So be sure when you step. Step with care and great tact and remember that life's a Great Balancing Act. - Dr. Seuss",   
+           "If you never did you should. These things are fun, and fun is good. - Dr. Seuss",
+           "I have heard there are troubles of more than one kind. Some come from ahead and some come from behind. But I've bought a big bat. I'm all ready you see. Now my troubles are going to have troubles with me! - Dr. Seuss",
+           "Will you succeed? Yes! You will, indeed! (98 and 3/4 percent guaranteed. - Dr. Seuss",   
+           "You're off to Great Places!",
+           "Today is your day!",
+           "Your mountain is waiting,",
+           "So... get on your way!",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "So be sure when you step, Step with care and great tact. And remember that life's A Great Balancing Act. And will you succeed? Yes! You will, indeed! ( and ? percent guaranteed) Kid, you'll move mountains.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "You'll get mixed up, of course, as you already know. You'll get mixed up with many strange birds as you go. So be sure when you step. Step with care and great tact and remember that Life's a Great Balancing Act. Just never forget to be dexterous and deft. And never mix up your right foot with your left.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "Oh the places you'll go! There is fun to be done! There are points to be scored. There are games to be won. And the magical things you can do with that ball will make you the winning-est winner of all.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "Things may happen and often do to people as brainy and footsy as you",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "Congratulations!",
+           "Today is your day.",
+           "You're off to Great Places!",
+           "You're off and away!",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "It's opener, out there, in the wide, open air.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "You have brains in your head.",
+           "You have feet in your shoes.",
+           "You can steer yourself any direction you choose.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "And when you're alone there's a very good chance",
+           "you'll meet things that scare you right out of your pants",
+           "There are some, down the road between hither and yon,",
+           "that can scare you so much you won't want to go on.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "You will come to a place where the streets are not marked.",
+           "Some windows are lighted. but mostly they're darked.",
+           "But mostly they're darked.",
+           "A place you could sprain both your elbow and chin!",
+           "Do you dare to stay out? Do you dare to go in?",
+           "How much can you lose? How much can you win?",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "Fame you'll be famous, as famous as can be, with everyone watching you win on TV, Except when they don't because sometimes they won't..",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "When you're in a Slump,",
+           "you're not in for much fun.",
+           "Un-slumping yourself",
+           "is not easily done.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "You won't lag behind, because you'll have the speed.",
+           "You'll pass the whole gang and you'll soon take the lead.",
+           "Wherever you fly, you'll be best of the best.",
+           "Wherever you go, you will top all the rest.",
+           "Except when you don't.",
+           "Because, sometimes, you won't.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "Onward up many a frightening creek, though your arms may get sore and your sneakers may leak. Oh! The places you'll go!",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "So...be your name Buxbaum or Bixby or Bray",
+           "or Mordecai Ali Van Allen O'Shea,",
+           "you're off to Great Places!",
+           "Today is your day!",
+           "Your mountain is waiting.",
+           "So...get on your way!",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "And will you succeed?",
+           "Yes! You will, indeed!",
+           "( (98 and 3/4 percent guaranteed.)",
+           "KID, YOU'LL MOVE MOUNTAINS!",
+           "Out there things can happen, and frequently do,",
+           "To people as brainy and footsy as you.",
+           "And when things start to happen, don't worry, don't stew.",
+           "Just go right along, you'll start happening too!",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "You can get so confused",
+           "that you'll start in to race",
+           "down long wiggled roads at a break-necking pace",
+           "and grind on for miles across weirdish wild space,",
+           "headed, I fear, toward a most useless place.",
+           "The Waiting Place...",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "Kid, you'll move mountains.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",
+           "Oh, the places you'll go! There is fun to be done!",
+           "There are points to be scored. There are games to be won.",
+           "And the magical things you can do with that ball",
+           "will make you the winning-est winner of all.",
+           "Fame! You'll be as famous as famous can be,",
+           "with the whole wide world watching you win on TV.",
+           "Except when they don't",
+           "Because, sometimes they won't.",
+           "I'm afraid that some times",
+           "you'll play lonely games too.",
+           "Games you can't win",
+           "'cause you'll play against you.",
+           "-- Dr. Seuss, Oh, The Places You'll Go!",           
+           "- Dr. Seuss")
+seuss.corpus <- Corpus(DataframeSource(data.frame(seuss)))
+seuss.corpus
+inspect(seuss.corpus)
+seuss.corpus[1]
+writeLines(as.character(seuss.corpus[1]))
+writeLines(as.character(seuss.corpus[1:3]))
+# Eliminating Extra Whitespace
+seuss.clean<-tm_map(seuss.corpus, stripWhitespace)
+# stemDocument
+seuss.clean.stem<-tm_map(seuss.clean, stemDocument)
+writeLines(as.character(seuss.clean.stem[1]))
+# "You have brains in your head."
+# Convert to Lower Case
+seuss.clean.lc <- tm_map(seuss.clean, content_transformer(tolower))
+writeLines(as.character(seuss.clean.lc[1]))
+# Remove Stopwords
+seuss.clean <- tm_map(seuss.clean.lc, removeWords, stopwords("english"))
+writeLines(as.character(seuss.clean.lc[1]))
+# Building a Document-Term Matrix
+seuss.tdm <- TermDocumentMatrix(seuss.clean, control = list(minWordLength = 1))
+seuss.tdm
+inspect(seuss.tdm[11:33,1:33])
+# Operations on Term-Document Matrices
+# Frequent Terms and Associations
+findFreqTerms(seuss.tdm, lowfreq=3)
+# which words are associated with "brains"?
+findAssocs(seuss.tdm, 'brains', 0.30)
+# Word Cloud
+m <- as.matrix(seuss.tdm)
+# calculate the frequency of words
+v <- sort(rowSums(m), decreasing=TRUE)
+myNames <- names(v)
+d <- data.frame(word=myNames, freq=v)
+wordcloud(d$word, d$freq, min.freq=3)
+```
+
+
+# Text Mining in R (RTextTools package)  
+
+
+This example comes directly from the RTextTools package. To find the [original link](http://www.rtexttools.com/blog/classifying-cancer-as-benign-or-malignant-using-rtexttools)
+
+
+[RTextTools](http://www.rtexttools.com/) created a text classification to identify breast cancer masses as benign or malignant. Using the Wisconsin Diagnostic Breast Cancer Dataset from UC Irvine, 
+[RTextTools](http://www.rtexttools.com/) wrote a script that trains eight classifiers on characteristics such as clump thickness, uniformity of cell size, uniformity of cell shape, marginal adhesion, single epithelial cell size, bare nuclei, bland chromatin, normal nucleoli, and mitoses. When run on the data, the classifiers were able to achieve up to 96% recall accuracy on a randomly sampled training set of 200 patients and test set of 400 patients.
+
+*Citation: Classification via Supervised Learning. R package version 1.3.9. [http://CRAN.R-project.org/package=RTextTools](http://CRAN.R-project.org/package=RTextTools)*
+
+
+```{r}
+# Reference: http://www.rtexttools.com/blog/classifying-cancer-as-benign-or-malignant-using-rtexttools
+
+# Classifying Breast Cancer as Benign or Malignant Using RTextTools - RTextTools: a machine learning library for text classification http://www.rtexttools.com/1/post/2012/02/classifying-cancer-as-benign-or-malignant-using-rtexttools.html
+# http://www.rtexttools.com/how-to-cite.html
+# GET THE BREAST CANCER data FROM http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.names
+data <- read.csv("http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/breast-cancer-wisconsin.data",header=FALSE)
+head(data)
+data <- data[-1]
+head(data)
+# ADD TEXTUAL DESCRIPTORS FOR EACH MASS CHARACTERISTIC FOR THE DOCUMENT-TERM MATRIX
+thick <- as.vector(apply(as.matrix(data[1], mode="character"),1,paste,"clump",sep="",collapse=""))
+size <- as.vector(apply(as.matrix(data[2], mode="character"),1,paste,"size",sep="",collapse=""))
+shape <- as.vector(apply(as.matrix(data[3], mode="character"),1,paste,"shape",sep="",collapse=""))
+adhesion <- as.vector(apply(as.matrix(data[4], mode="character"),1,paste,"adhesion",sep="",collapse=""))
+single <- as.vector(apply(as.matrix(data[5], mode="character"),1,paste,"single",sep="",collapse=""))
+nuclei <- as.vector(apply(as.matrix(data[6], mode="character"),1,paste,"nuclei",sep="",collapse=""))
+chromatin <- as.vector(apply(as.matrix(data[7], mode="character"),1,paste,"chromatin",sep="",collapse=""))
+nucleoli <- as.vector(apply(as.matrix(data[8], mode="character"),1,paste,"nucleoli",sep="",collapse=""))
+mitoses <- as.vector(apply(as.matrix(data[9], mode="character"),1,paste,"mitoses",sep="",collapse=""))
+training_data <- cbind(data[10],thick,size,shape,adhesion,single,nuclei,chromatin,nucleoli,mitoses)
+head(training_data)
+head(data)
+# [OPTIONAL] SUBSET YOUR data TO GET A RANDOM SAMPLE
+training_data <- training_data[sample(1:699,size=600,replace=FALSE),]
+training_codes <- training_data[1]
+training_data <- training_data[-1]
+# CREATE A TERM-DOCUMENT MATRIX THAT REPRESENTS WORD FREQUENCIES IN EACH DOCUMENT
+# WE WILL TRAIN ON THE Title and Subject COLUMNS
+matrix <- create_matrix(training_data, language="english", removeNumbers=FALSE, stemWords=FALSE, removePunctuation=FALSE, weighting=weightTf)
+# CREATE A container THAT IS SPLIT INTO A TRAINING SET AND A TESTING SET
+# WE WILL BE USING t(training_codes) AS THE CODE COLUMN. WE DEFINE A 200 
+# ARTICLE TRAINING SET AND A 400 ARTICLE TESTING SET.
+container <- create_container(matrix,t(training_codes),trainSize=1:200, testSize=201:600,virgin=FALSE)
+# THERE ARE TWO METHODS OF TRAINING AND CLASSIFYING data.
+# ONE WAY IS TO DO THEM AS A BATCH (SEVERAL ALGORITHMS AT ONCE)
+models <- train_models(container, algorithms=c("MAXENT","SVM","GLMNET","SLDA","TREE","BAGGING","BOOSTING","RF"))
+results <- classify_models(container, models)
+# VIEW THE RESULTS BY CREATING ANALYTICS
+analytics <- create_analytics(container, results)
+# RESULTS WILL BE REPORTED BACK IN THE analytics VARIABLE.
+# analytics@algorithm_summary: SUMMARY OF PRECISION, RECALL, F-SCORES, AND ACCURACY SORTED BY TOPIC CODE FOR EACH ALGORITHM
+# analytics@label_summary: SUMMARY OF LABEL (e.g. TOPIC) ACCURACY
+# analytics@document_summary: RAW SUMMARY OF ALL data AND SCORING
+# analytics@ensemble_summary: SUMMARY OF ENSEMBLE PRECISION/COVERAGE. USES THE n VARIABLE PASSED INTO create_analytics()
+analytics
+analytics@ensemble_summary
+```
+
+
+# Assingment
+
+Create regular expressions for the patterns below: 
+
+* Match any of the following punctuation characters in the ASCII table:  !"#$%&'()+,  
+
+* Create one regular expression to match all common misspellings of calendar (see https://en.wikipedia.org/wiki/Wikipedia:Lists_of_common_misspellings/C)
+
+* Create one regular expression to match any character except line breaks.  
+
+* You need to validate a ZIP code (U.S. postal code), allowing both the five-digit and nine-digit (called ZIP+4) formats. The regex should match 02115 and 02115-5515, but not 2115, 2115-5515, 21155515,021155515, etc..
+
+* You need to validate a legit any password for your website. Passwords have the following complexity requirements: Length between 8 and 32 characters, ASCII visible and space characters only, One or more uppercase letters, One or more lowercase letters, One or more special characters (ASCII punctuation)  
+
+
+* Load the file M08_tweets.csv (it is online at  'http://nikbearbrown.com/YouTube/MachineLearning/M08/M08_tweets.csv')
+* Do the following:
+    * Extract a list of the top 9 users (e.g. @NikBearBrown)
+    * Extract a list of the top 9 hashtags (e.g. #Bear)    
+    * Find the top 5 most positve tweets  
+    * Find the top 5 most negative tweets  
+    * Create a world cloud of 100 related tweets      
+    * Which tweets could be classified as game development?   
+
+Write up your report as an .Rmd file.
+  
+# Resources   
+
+* [Introduction to the tm Package Text Mining in R - CRAN](https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf)     
+* [RDataMining.com: R and Data Mining
+](http://www.rdatamining.com/examples/text-mining)    
+* [Text Mining in R Tutorial: Term Frequency & Word Clouds](https://deltadna.com/blog/text-mining-in-r-for-term-frequency/)    
+* [Basic Text Mining in R](https://rstudio-pubs-static.s3.amazonaws.com/31867_8236987cf0a8444e962ccd2aec46d9c3.html)    
+* [Text Mining in R Tutorial: Term Frequency & Word Clouds ..](https://www.youtube.com/watch?v=lRTerj8fdY0)    
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

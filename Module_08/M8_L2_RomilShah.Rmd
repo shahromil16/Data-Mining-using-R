@@ -1,0 +1,120 @@
+---
+title: "M8_L2_RomilShah"
+author: "Romil Shah"
+date: "July 17, 2016"
+output: word_document
+---
+
+```{r}
+require(RTextTools)
+require(tm)
+require(wordcloud)
+
+#Match any of the following punctuation characters in the ASCII table: !"#$%&'()+
+
+x <- "I like %$@to*&, chew;: gum, but don't like|}{[] bubble@#^)( gum!?"
+
+matchpunct <- gsub("[^[:alnum:][:space:]!\"#$%&'()+]", "", x)
+#The required munctuations are matched and we get the following output:
+matchpunct
+                
+
+#Match misspellings of calendar:
+subject <- c("calendar",
+             "celandar",
+             "calander",
+             "celender",
+             "calandar",
+             "celendar",
+             "celandar",
+             "calender")
+grep(pattern="cal[ae]nd[ae]r", x=subject, perl=F, value=F)
+grep(pattern="cal[ae]nd[ae]r", x=subject, perl=F, value=T)
+
+#The spellings are matched and using the regex the misspellings are matched to the correct one
+
+
+#Match any charcters except line breaks:
+
+subject <-
+    "A - Hi! How are you?,
+B - I am good :)"
+pattern <- "\n"
+gsub(pattern, "",subject)
+#Using the above regex for line breaks, the lines are read without reading the line break.
+
+
+#Validate zipcode
+zipcode <- c("02115-5515","02115","2115","2115-5515,21155515,021155515")
+pattern <- "^[0-9]{5}(?:-[0-9]{4})?$"
+grep(pattern=pattern,x=zipcode,perl=F,value=T)
+#This regex matches to xxxxx-xxxx type of zip code and any other format is not matched
+
+
+#Validate password
+pattern <- "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,32}$"
+pwd <- c("DScs@6030","dataMining")
+grep(pattern=pattern,x=pwd,perl=T,value=T)
+#The password with the given requirements is only taken else it is not considered
+
+
+#Tweets
+tweets <- read.csv(url("http://nikbearbrown.com/YouTube/MachineLearning/M08/M08_tweets.csv"))
+
+# tweets.corpus <- Corpus(DataframeSource(data.frame(tweets)))
+# tweets.clean.stem<-tm_map(tweets.clean, stemDocument)
+# tweets.clean.lc <- tm_map(tweets.clean,content_transformer(tolower))
+# tweets.tdm <- TermDocumentMatrix(tweets.clean.lc, control = list(minWordLength = 1))
+# inspect(tweets.tdm)
+
+#Top 9 users
+pattern <- "@[a-zA-Z0-9_]"
+temp<- as.character(unlist(tweets))
+temp_users <- grep(pattern=pattern,x=temp,perl=T,value=T)
+myCorpus <- Corpus(VectorSource(temp_users))
+myTDM <- TermDocumentMatrix(myCorpus)
+temp<-findFreqTerms(myTDM,220)
+users <- grep(pattern=pattern,x=temp,perl=T,value=T)
+#Top 9 users are as follows:
+users
+
+#Top 9 hashtags
+pattern <- "#[a-zA-Z0-9_]"
+temp<- as.character(unlist(tweets))
+temp_hash <- grep(pattern=pattern,x=temp,perl=T,value=T)
+myCorpus <- Corpus(VectorSource(temp_hash))
+myTDM <- TermDocumentMatrix(myCorpus)
+temp<-findFreqTerms(myTDM,600)
+hash <- grep(pattern=pattern,x=temp,perl=T,value=T)
+#Top 9 hashtags are as follows:
+hash
+
+#Top 5 positive tweets
+temp<- as.character(unlist(tweets))
+temp1 <- grep("good", unlist(strsplit(temp, "\\.\\s+")), value=TRUE)
+temp1 <- grep("love", unlist(strsplit(temp1, "\\.\\s+")), value=TRUE)
+#Top 5 positive tweets are as follows:
+temp1[1:5]
+
+#Top 5 negative tweets
+temp<- as.character(unlist(tweets))
+temp1 <- grep("bad", unlist(strsplit(temp, "\\.\\s+")), value=TRUE)
+temp1 <- grep("hate", unlist(strsplit(temp1, "\\.\\s+")), value=TRUE)
+#Top 5 negative tweets are as follows:
+temp1[1:5]
+
+#wordcloud of 100 related words
+myCorpus <- Corpus(VectorSource(tweets))
+myCorpus <- tm_map(myCorpus,PlainTextDocument)
+myCorpus <- tm_map(myCorpus,stemDocument)
+wordcloud(myCorpus, max.words = 100, random.order = FALSE)
+
+#Game developement tweets
+temp<- as.character(unlist(tweets))
+temp1 <- grep("game", unlist(strsplit(temp, "\\.\\s+")), value=TRUE)
+temp1 <- grep("development", unlist(strsplit(temp1, "\\.\\s+")), value=TRUE)
+temp1
+```
+
+####The positive tweets are based upon the words: 'good', 'love' and the negative tweets are based upon the words: 'bad', 'hate'. The game development tweets are based upon 'game' and 'development'.
+####The 600 higher frequencies are considered for hashtags and 220 are considered for users.
