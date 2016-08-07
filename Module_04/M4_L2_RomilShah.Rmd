@@ -1,0 +1,162 @@
+---
+title: "M4_L2_RomilShah"
+author: "Romil Shah"
+date: "June 13, 2016"
+output: word_document
+---
+
+## Read Data and additional packages
+
+```{r}
+require(ggplot2)
+require(cluster)
+require(useful)
+require(energy)
+
+dataframe <- read.table("C:/Users/rams1/Desktop/DSCS6030/Module_04/ecoli.data")
+colnames(dataframe) <- c("SeqNames","mcg","gvh","lip","chg","aac","alm1","alm2","Class")
+ecoli <- dataframe[2:8]
+head(ecoli)
+```
+
+## Clustering
+
+### (1) K-means Clustering:
+
+```{r}
+# Determining number of clusters 
+sos <- (nrow(ecoli)-1)*sum(apply(ecoli,2,var))
+for (i in 2:10) sos[i] <- sum(kmeans(ecoli, centers=i)$withinss)
+plot(1:10, sos, type="b", xlab="Number of Clusters", ylab="sum of squares")
+# Hartigans's rule  FitKMean (similarity)
+# require(useful)
+best<-FitKMeans(ecoli,max.clusters=10, seed=111) 
+PlotHartigan(best)
+```
+
+Clustering by k = 4
+
+```{r}
+k<-4
+ecoli.4.clust<-kmeans(ecoli,k)
+ecoli.4.clust
+```
+
+### (2) PAM Clustering:
+
+```{r}
+k<-4
+ecoli.pam.4.clust<- pam(ecoli,k, keep.diss = TRUE, keep.data = TRUE)
+ecoli.pam.4.clust
+```
+
+### (3) Hierarchical Clustering:
+
+```{r}
+ecoli.h.clust<- hclust(d=dist(ecoli))
+plot(ecoli.h.clust)
+```
+
+
+## Answers:
+
+####A(1)
+'k' for k-means was chosen based upon the hartigan's rule where the least sum of square was for k = 4.
+
+####A(2)
+Cluster apporaches compare on the same data as follows:
+1. The number of clusters i.e. 4
+2. The further evaluation is done on basis of the confusion matrix
+3. Cluster size and centers:
+```{r}
+#size of cluster
+ecoli.4.clust$size
+#centers of cluster
+ecoli.4.clust$centers
+```
+
+####A(3)
+1. Confusion matrix for k-means
+```{r}
+cm.kmeans <-table(dataframe$Class,ecoli.4.clust$cluster)
+cm.kmeans
+plot(cm.kmeans)
+```
+2. Confusion matrix for PAM
+```{r}
+cm.pam<-table(dataframe$Class,ecoli.pam.4.clust$cluster)
+cm.pam
+plot(cm.pam)
+```
+It is clearly seen that there are errors for 'cp', 'im' and 'imU' classes with respect to k-means and pam confusion plot. Other classes are quite similar and thus the approach matches in those classes.
+
+####A(4)
+1.Centroid plots for k-means
+```{r}
+clusplot(dataframe, ecoli.4.clust$cluster, color=TRUE, shade=TRUE, labels=2, lines=0)
+```
+2. Centroid plots for PAM
+```{r}
+clusplot(dataframe, ecoli.pam.4.clust$cluster, color=TRUE, shade=TRUE, labels=2, lines=0)
+```
+From the centroid plots, it is seen that 'pink', 'red' and 'green' clusters have nearly similar centers but 'blue' has a different center.
+From that, 'pink' and 'red' also have nearly similar size and orientation compared to the other two clusters. Thus PAM and k-means have very similar approach in some sections of the data and not similar in other sections.
+
+####A(5)
+Silhoutte plot for PAM
+```{r}
+plot(ecoli.pam.4.clust, which.plots = 2)
+```
+The similarity between the for each cluster within every cluster is quite less for all the 4 clusters. Cluster 1 has about 0.32, Cluster 2 has about 0.11, Cluster 3 has about 0.28 and CLuster 4 has the highest among them at 0.46
+
+####A(6)
+Hierarchical Clustering methods
+1. Single Link
+```{r}
+ecoli.h.clust.single<- hclust(dist(ecoli), method = "single")
+plot(ecoli.h.clust.single, labels = FALSE)
+```
+2. Complete Link
+```{r}
+ecoli.h.clust.complete<- hclust(dist(ecoli), method = "complete")
+plot(ecoli.h.clust.complete, labels = FALSE)
+```
+3. Average Link
+```{r}
+ecoli.h.clust.average<- hclust(dist(ecoli), method = "average")
+plot(ecoli.h.clust.average, labels = FALSE)
+```
+4. Centroid
+```{r}
+ecoli.h.clust.centroid<- hclust(dist(ecoli), method = "centroid")
+plot(ecoli.h.clust.centroid, labels = FALSE)
+```
+5. Minimum Energy
+```{r}
+plot(energy.hclust(dist(ecoli)),labels = FALSE)
+```
+Complete and Average have similar type of clustering. Single has less heirarchical structure. Centroid is more heirarchical towards the end. Energy clustering shows the most structured clustering along with high clustering towards the end.
+
+####A(7)
+Hierarchical Clustering methods
+1. Agglomerative
+```{r}
+distance<- dist(ecoli,method="euclidean") 
+ecoli_agglo<-hclust(distance, method="complete")
+plot(ecoli_agglo,labels=FALSE)
+```
+2. Divisive
+```{r}
+ecoli_divi<-diana(ecoli, diss=inherits(ecoli, "dist"), metric="euclidean")
+plot(ecoli_divi)
+```
+The cluster dendogram is quite similar for agglomerative and divisive clustering. The divisive clustering also gives a banner but as the correlation for in-between cluster data is less, the banner does not show lines.
+
+####A(8)
+Hierarchical Clustering methods
+Centroid clustering with squared euclidean distance
+```{r}
+ecoli_c_e<- hclust(dist(ecoli)^2, "centroid")
+plot(ecoli_c_e,labels=FALSE)
+```
+The resulting dendogram is very much similar to agglomerative, centroid and minimum energy clustering. 

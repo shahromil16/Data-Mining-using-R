@@ -1,0 +1,941 @@
+---
+title: "Clustering"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson, we cover clustering theory, and distance & similarity measures. We use R apply and evaluate various clustering techniques such as hierarchical clustering, k-means clustering and pam.  We look are techniques to help choose the number of clusters as well as how to evaluating cluster performance. 
+
+# Additional packages needed
+ 
+To run the code in M02_Lesson_02.Rmd you may need additional packages.
+
+* If necessary install `ggplot2, cluster and amap` packages.  
+
+`install.packages("ggplot2"); `  
+`install.packages("cluster"); `  
+`install.packages("amap"); `  
+`install.packages("useful");  `  
+
+```{r}
+require(ggplot2)
+require(cluster)
+require(amap)
+require(useful)
+```
+
+
+# Data
+
+We'll be using GDP per capita, life expectancy, infant.mortality, and literacy data made availble by the WorldBank [data.worldbank.org](http://data.worldbank.org/)  
+
+
+GDP per capita (current US$)  
+
+GDP per capita is gross domestic product divided by midyear population. GDP is the sum of gross value added by all resident producers in the economy plus any product taxes and minus any subsidies not included in the value of the products. It is calculated without making deductions for depreciation of fabricated assets or for depletion and degradation of natural resources. Data are in current U.S. dollars.
+
+Life expectancy at birth, total (years)  
+
+Life expectancy at birth indicates the number of years a newborn infant would live if prevailing patterns of mortality at the time of its birth were to stay the same throughout its life. Derived from male and female life expectancy at birth from sources such as: (1) United Nations Population Division. World Population Prospects, (2) United Nations Statistical Division. Population and Vital Statistics Report (various years), (3) Census reports and other statistical publications from national statistical offices, (4) Eurostat: Demographic Statistics, (5) Secretariat of the Pacific Community: Statistics and Demography Programme, and (6) U.S. Census Bureau: International Database.  
+
+Mortality rate, infant (per 1,000 live births)  
+
+Infant mortality rate is the number of infants dying before reaching one year of age, per 1,000 live births in a given year. Estimates developed by the UN Inter-agency Group for Child Mortality Estimation (UNICEF, WHO, World Bank, UN DESA Population Division) at [www.childmortality.org](http://www.childmortality.org/).
+
+
+Literacy rate, adult total (% of people ages 15 and above)  
+
+Adult (15+) literacy rate (%). Total is the percentage of the population age 15 and above who can, with understanding, read and write a short, simple statement on their everyday life. Generally, ‘literacy’ also encompasses ‘numeracy’, the ability to make simple arithmetic calculations. This indicator is calculated by dividing the number of literates aged 15 years and over by the corresponding age group population and multiplying the result by 100.  
+
+
+We will also be using [Francis Galton's](https://en.wikipedia.org/wiki/Francis_Galton) analysis of the heights of sons and fathers. Heights of sons of both tall and short fathers appeared to “revert” or “regress” to the mean of the group.  
+
+We will also be using the [Wholesale customers Data Set](https://archive.ics.uci.edu/ml/datasets/Wholesale+customers) (Data used in Hierarchical Clustering). The data set refers to clients of a wholesale distributor. It includes the annual spending in monetary units (m.u.) on diverse product categories.  
+
+Link: [https://archive.ics.uci.edu/ml/machine-learning-databases/00292/](https://archive.ics.uci.edu/ml/machine-learning-databases/00292/)
+Source: UCI Machine Learning Repository : Data Set: Wholesale customer data.csv
+
+The data has been modified so that each row (expenses) has been simply identified as a different Region (Region 1 to 49).    
+
+
+```{r data}
+# Load our data
+
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M02/Galton_heights_sons_and_fathers.csv'
+galton <- read.csv(url(data_url))
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M04/AnnualSpending.csv'
+spend <- read.csv(url(data_url))
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M04/data.worldbank.org.csv'
+dwb <- read.csv(url(data_url),header=TRUE)
+```
+
+## Galton's data set
+
+Francis Galton's analysis of the heights of sons and fathers  .
+
+
+```{r}
+head(galton)
+h.gend<-galton[c("Height","Gender")]
+head(h.gend)
+```
+
+You can also 
+
+## data.worldbank.org
+
+data.worldbank.org  
+
+
+```{r}
+head(dwb)
+wb<-dwb[c("Life.expectancy","Infant.mortality","Per.capita.income","Literacy")]
+head(wb)
+```
+
+## Wholesale customers data set  
+
+Wholesale customers Data Set  
+
+
+```{r}
+head(spend)
+```
+
+
+# Clustering
+
+What is [Clustering](https://en.wikipedia.org/wiki/Cluster_analysis)?
+Clustering is grouping like with like such that:  
+
+* Similar objects are close to one another within the same cluster.  
+* Dissimilar to the objects in other clusters.  
+
+![cluster analysis](https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Cluster-2.svg/440px-Cluster-2.svg.png)
+
+*cluster analysis*  
+  
+# Distance & Similarity Measures
+
+There are two primary approaches to measure the "closeness" of data, distance and similarity. Distance measures are based in the notion of a [metric space](https://en.wikipedia.org/wiki/Metric_space).
+
+[Similarity measures](https://en.wikipedia.org/wiki/Similarity_measure) s a real-valued function that quantifies the similarity between two objects. While no single definition of a similarity measure exists, they don't necessarily have the constraint of being a metric space.  For example, [cosine similarity](https://en.wikipedia.org/wiki/Cosine_similarity) is a measure of the "closeness" of two vectors that is not a metric space.
+
+## Metric Spaces
+
+A *metric space* is an *ordered pair* $(M,d)$ where $M$ is a set and $d$ is a distance (i.e.metric) on $M$, i.e., a function:  
+
+$d \colon M \times M \rightarrow \mathbb{R}$
+
+such that for any $x, y, z \in M$, the following holds:  
+
+* $d(x,y) \ge 0 \quad (non-negative),$  
+* $d(x,y) = 0, \iff x = y \quad (identity \quad of \quad indiscernibles),$  
+* $d(x,y) = d(y,x), \quad (symmetry).$  
+* $d(x,z) \le d(x,y) + d(y,z) \quad  (triangle \quad inequality)$  
+
+### Examples of Metric Spaces
+
+Examples of Metric Spaces are [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance), [Euclidean distance](https://en.wikipedia.org/wiki/Euclidean_distance), [Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance), [Minkowski distance](https://en.wikipedia.org/wiki/Minkowski_distance) and many others.
+ 
+#### Euclidean distance
+
+Euclidean distance is the most common metric for measuring the distance between two vectors. The is the stadard Cartesian coordinates. That is, if $p = (p_1, p_2,..., p_n)$ and $q = (q_1, q_2,..., q_n)$ are two points in Euclidean n-space, then the distance (d) from p to q, or from q to p is given by the Pythagorean formula:
+
+$$\begin{align}\mathrm{d}(\mathbf{p},\mathbf{q}) = \mathrm{d}(\mathbf{q},\mathbf{p}) & = \sqrt{(q_1-p_1)^2 + (q_2-p_2)^2 + \cdots + (q_n-p_n)^2} \\[8pt]
+& = \sqrt{\sum_{i=1}^n (q_i-p_i)^2}.\end{align}$$  
+
+
+## Similarity Measures
+
+Similarity (or dimilarity measures) measure closeness without the constraints and benefits of being a formal metric space.
+
+### Cosine similarity
+
+The most common form of the similarity measure is the vector inner product (or [cosine similarity](https://en.wikipedia.org/wiki/Cosine_similarity))
+Given vectors A and B, the vector inner product can be defined using the [Euclidean dot product](https://en.wikipedia.org/wiki/Euclidean_vector#Dot_product) formula:
+
+$$\mathbf{a}\cdot\mathbf{b}
+=\left\|\mathbf{a}\right\|\left\|\mathbf{b}\right\|\cos\theta$$
+
+This similarity measure can also be ranged normalized. Alternately, we can normalize this measure by dividing each vector component by the magnitude of the vector.
+
+### Pearson correlation
+
+Correlation based similarity is usually the [Pearson correlation](https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient). Pearson product-moment correlation coefficient commonly represented by the Greek letter $\rho$ (rho) and is defined as:
+
+$$ \rho_{X,Y}= \frac{\operatorname{cov}(X,Y)}{\sigma_X \sigma_Y} $$
+
+where $\operatorname{cov}$ is the [covariance](https://en.wikipedia.org/wiki/Covariance) and  $\sigma_X$ is the [standard deviation](https://en.wikipedia.org/wiki/Standard_deviation) of $X$.  
+
+The formula for $\rho$can be expressed in terms of mean and expectation.  
+
+$$\operatorname{cov}(X,Y) = E[(X-\mu_X)(Y-\mu_Y)]$$ 
+
+
+# Clustering Data Structures
+
+* Data matrix
+
+$$ 
+M=
+  \begin{bmatrix}
+    x_{1,1} & x_{1,2} & x_{1,3} & ...  & x_{1,n} \\
+    x_{2,1} & x_{2,2} & x_{2,3} & ...  & x_{2,n} \\
+    x_{3,1} & x_{3,2} & x_{3,3} & ...  & x_{3,n} \\    
+    .. & .. & .. & ...  & .. \\    
+    x_{n,1} & x_{n,2} & x_{n,3} & ...  & x_{n,n} \\    
+  \end{bmatrix}
+$$
+
+Distance matrix
+
+$$ 
+M=
+  \begin{bmatrix}
+    x_{1,1} &   &  &   &  \\   
+    x_{2,1} & 0  &  &   &  \\   
+    x_{3,1} & x_{3,2} & 0 &   &  \\    
+    .. & .. & .. & ...  & .. \\    
+    x_{n,1} & x_{n,2} & x_{n,3} & ...  & 0 \\    
+  \end{bmatrix}
+$$
+
+* Dissimilarity/Similarity matrix
+
+
+The dissimilarity/similarity matrix is calculated by iterating over each element and calculating its dissimilarity/similarity to every other element. Let A be a Dissimilarity Matrix of size $NxN$, and $B$ a set of $N$ elements. $A_{i,j}$ is the dissimilarity/similarity between elements $B_i$ and $B_j$.  
+
+
+```
+
+   for i = 0 to N do
+       for j = 0 to N do
+           Aij = Dissimilarity(Bi,Bj) // or Similarity(Bi,Bj)
+       end-for
+   end-for
+   
+```     
+   
+where the dissimilarity/similarity matrix is usually defined as follows:
+
+$$ 
+M=
+  \begin{bmatrix}
+    0 &   &  &   &  \\   
+   d(2,1)  & 0  &  &   &  \\   
+   d(3,1)  & d(3,2) & 0 &   &  \\    
+    .. & .. & .. & ...  & .. \\    
+    d(n,1)  & d(n,2) & d(n,3) & ...  & 0 \\    
+  \end{bmatrix}
+$$
+
+
+
+# Types of  Clustering
+
+[Clustering](https://en.wikipedia.org/wiki/Cluster_analysis) (e.g., k-means, mixture models, hierarchical clustering). Cluster analysis or clustering is the task of grouping a set of objects in such a way that objects in the same group (called a cluster) are more similar (in some sense or another) to each other than to those in other groups (clusters). There are various types of cluster analysis.  
+
+* Partitioning-based clustering (K-means and its variants)
+* Hierarchical clustering
+* Density-based clustering
+
+## Partitioning-based clustering (K-means and its variants)
+
+Partitioning algorithms: Construct various partitions and then evaluate them by some criterion
+Hierarchy algorithms: Create a hierarchical decomposition of the set of data (or objects) using some criterion
+Density-based: based on connectivity and density functions
+Grid-based: based on a multiple-level granularity structure
+Model-based: A model is hypothesized for each of the clusters and the idea is to find the best fit of that model to each other
+
+
+Partitioning method: Construct a partition of n documents into a set of K clusters
+Given: a set of documents and the number K 
+Find: a partition of K clusters that optimizes the chosen partitioning criterion
+Globally optimal
+Intractable for many objective functions
+Ergo, exhaustively enumerate all partitions
+Effective heuristic methods: K-means and K-medoids algorithms
+
+
+### K-means
+
+The term "k-means" was first used by James MacQueen in 1967,[1] though the idea goes back to Hugo Steinhaus in 1957. Given a desired $k$ clusters and n data points $X = {x_1, x_2, …, x_n}$: 
+
+Initialize centroids $\mu_1, \mu_1, ... \mu_k \quad \in \quad  \mathbb{R}^n$  (usually randomly)  
+
+
+while (not coverged):
+
+Step A (Assignment step):  
+
+  Find the closest cluster to every point in $X = {x_1, x_2, …, x_n}$
+  
+  That is,   
+$$\underset{\mathbf{X}} {\operatorname{arg\,min}}  \sum_{i=1}^{k} \sum_{\mathbf x \in X_i} \left\| \mathbf x - \boldsymbol\mu_i \right\|^2$$
+
+where $\mu_i$ is the mean of points in $X_i$.
+
+$$
+S_i^{(t)} = \big \{ x_p : \big \| x_p - m^{(t)}_i \big \|^2 \le \big \| x_p - m^{(t)}_j \big \|^2 \ \forall j, 1 \le j \le k \big\}
+$$  
+
+Step B (Update step): 
+
+  Calculate the new means to be the centroids of the observations in the new clusters.
+
+$$
+m^{(t+1)}_i = \frac{1}{|X^{(t)}_i|} \sum_{x_j \in X^{(t)}_i} x_j 
+$$
+
+The [centroid](https://en.wikipedia.org/wiki/Centroid) of a finite set of {k} points  
+
+$$
+\mathbf{x}_1,\mathbf{x}_2,\ldots,\mathbf{x}_k in \mathbb{R}^n \quad is\quad 
+\mathbf{C} = \frac{\mathbf{x}_1+\mathbf{x}_2+\cdots+\mathbf{x}_k}{k}
+$$
+
+
+#### Demonstration of the k-means algorithm
+
+Demonstration of the standard algorithm (from [k-means algorithm](https://en.wikipedia.org/wiki/K-means_clustering#Standard_algorithm)  
+
+![k initial controids](https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/K_Means_Example_Step_1.svg/249px-K_Means_Example_Step_1.svg.png)  
+
+1. k initial "means" (in this case k=3) are randomly generated within the data domain (shown in color).  
+
+![find nearest cluster](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/K_Means_Example_Step_2.svg/278px-K_Means_Example_Step_2.svg.png)  
+
+2. k clusters are created by associating every observation with the nearest mean. The partitions here represent the [Voronoi diagram](https://en.wikipedia.org/wiki/Voronoi_diagram) generated by the means.  
+
+![new centroid](https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/K_Means_Example_Step_3.svg/278px-K_Means_Example_Step_3.svg.png)  
+
+3. The centroid of each of the k clusters becomes the new mean.  
+
+![k-means algorithm converges](https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/K_Means_Example_Step_4.svg/278px-K_Means_Example_Step_4.svg.png)  
+
+4. Steps 2 and 3 are repeated until convergence has been reached. The k-means algorithm converges when no points are assigned new clusters.  
+
+#### Problems with k-means clustering
+
+For problems with k-means clustering see [K-means clustering is not a free lunch](http://varianceexplained.org/r/kmeans-free-lunch/)
+
+
+### K-medoids (PAM)
+
+The K-medoids or Partitioning Around Medoids (PAM) algorithm (Kaufman & Rousseeuw’87) is related to the k-means algorithm and but uses medoid shifts rather than reassigning points based on Euclidean distance.  Each cluster is represented by one of the objects (i.e. points) in the cluster  A medoid is a point in a cluster whose dissimilarity to all the points in the cluster is minimal. Medoids are similar in concept to means or centroids, but medoids are always members of the data set. That is, in 2D [Cartesian space](https://en.wikipedia.org/wiki/Cartesian_coordinate_system) a centroid can be any valid x.y coordinate. Whereas a medoid must be one of the data points. (The data point least dissimilar to the rest.)
+
+Pseduocode for the k-medoid clustering (Partitioning Around Medoids (PAM)) algorithm:  
+
+
+```
+Initialize: randomly select[citation needed] (without replacement) k of the n data points as the medoids
+
+Associate each data point to the closest medoid.
+
+While the cost of the configuration decreases:
+  For each medoid m, for each non-medoid data point o:
+    Swap m and o, recompute the cost
+
+  If the total cost of the configuration increased in the previous step, undo   the swap.
+
+```
+
+
+## Hierarchical clustering
+
+In [hierarchical clustering](https://en.wikipedia.org/wiki/Hierarchical_clustering) the idea is to group data objects (i.e. points) into a tree of clusters. That is, hierarchical clustering is a method of cluster analysis which seeks to build a hierarchy of clusters. 
+
+These trees (hierarchies) generally fall into two types:
+
+### Agglomerative hierarchical clustering 
+
+Initially each data object (i.e. point) in its own cluster. Iteratively the clusters are merged together from the "bottom-up." The two most similar/closest objects are aggreated in to the same cluster/data object. Then the next two, until there is just one cluster/data object. This agglomerative approach result in “straggly” (long and thin) clusters due to a chaining effect. It is also sensitive to noise.
+
+
+
+### Divisive hierarchical clustering 
+
+in divisive hierarchical clustering all data objects (i.e. points) are initially in one cluster. These clusters are successively divided recursivley in a "top-down" manner. The cluster is broken in to two clusters that are most dissimilar. Then each of those clusters is broken in to two cluster that are most dissimilar. This continues until each clsuter is a single data object (i.e. point).
+
+### Linkage criteria
+
+* Single Link: smallest distance between points
+    + $\min \, \{\, d(a,b) : a \in A,\, b \in B \,\}$
+* Complete Link: largest distance between points
+    +  $\max \, \{\, d(a,b) : a \in A,\, b \in B \,\}$
+* Average Link: average distance between points
+    + $\frac{1}{|A| |B|} \sum_{a \in A }\sum_{ b \in B} d(a,b)$ 
+* Centroid: distance between centroids
+    +  $||c_s - c_t ||$  where $c_s$ and $c_t$ are the centroids of clusters $s$ and $t$, respectively.
+* Minimum energy clustering: a statistical distance between probability distributions.
+    +  $\frac{2}{nm}\sum_{i,j=1}^{n,m} \|a_i- b_j\|_2 - \frac{1}{n^2}\sum_{i,j=1}^{n} \|a_i-a_j\|_2 - \frac{1}{m^2}\sum_{i,j=1}^{m} \|b_i-b_j\|_2 $
+
+
+## Density-based clustering
+
+Density-based clustering is similar to k-means clustering, except that it uses the [expectation-maximization algorithm](https://en.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm), to generate a likelihood that for each data objects (i.e. points) belong to a cluster. In the special case of a Gaussian mixture model, specifically, the limit of taking all covariances as diagonal, equal, and small. A k-means problem can be  generalized into a Gaussian mixture model.
+
+Density-based clustering uses a density estimator to learn a probalistic mapping from a set of attributes to a probability.
+
+Input -> Density Estimator -> Probability
+
+Given a data object x(i.e. point), a density estimator M can tell you how likely x belongs to cluster k.
+
+Given a statistical model which generates a set $\mathbf{X}$ of observed data (e.g. assuming it comes for a Gaussian distribution), a set of unobserved latent data or missing values $\mathbf{Z}$, and a vector of unknown parameters $\boldsymbol\theta$, along with a likelihood function $L(\boldsymbol\theta; \mathbf{X}, \mathbf{Z}) = p(\mathbf{X}, \mathbf{Z}|\boldsymbol\theta),$ the maximum likelihood estimate (MLE) of the unknown parameters is determined by the marginal likelihood of the observed data $L(\boldsymbol\theta; \mathbf{X}) = p(\mathbf{X}|\boldsymbol\theta) = \sum_{\mathbf{Z}} p(\mathbf{X},\mathbf{Z}|\boldsymbol\theta)$  
+
+
+The EM algorithm seeks to find the MLE of the marginal likelihood by iteratively applying the following two steps:
+
+Expectation step (E step): Calculate the expected value of the log likelihood function, with respect to the conditional distribution of $\mathbf{Z}$ given $\mathbf{X}$ under the current estimate of the parameters  
+
+$$\boldsymbol\theta^{(t)}:
+Q(\boldsymbol\theta|\boldsymbol\theta^{(t)}) = \operatorname{E}_{\mathbf{Z}|\mathbf{X},\boldsymbol\theta^{(t)}}\left[ \log L(\boldsymbol\theta;\mathbf{X},\mathbf{Z})  \right] $$  
+
+Maximization step (M step): Find the parameter that maximizes this quantity:
+
+$$ \boldsymbol\theta^{(t+1)} = \underset{\boldsymbol\theta}{\operatorname{arg\,max}} Q(\boldsymbol\theta|\boldsymbol\theta^{(t)})
+$$
+
+
+# Good Clustering?
+
+Evaluation of clustering results sometimes is referred to as cluster validation.
+
+* high intra-class distance/similarity
+* low inter-class distance/similarity 
+
+
+Cluster Cohesion: Measures how closely related are objects in a cluster.  
+
+Cluster Separation: Measure how distinct or well-separated a cluster is from other clusters.  
+
+
+The quality of a clustering result depends on both the similarity measure used by the method and its implementation
+
+## Visualization
+
+There are a number of packages for plotting clusters:
+
+* R package [rggobi](https://cran.r-project.org/web/packages/rggobi/index.html) along with [GGobi.org](http://www.ggobi.org/)
+* R package [clusterfly](http://had.co.nz/model-vis/)
+* other R packages 
+
+We'll focus on dendrograms,  multidimensional scaling (MDS) and plotting a confusion matrix.
+
+### Dendrogram
+
+A [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) is a tree data structure which illustrates hierarchical (or taxonomic) relationships
+
+* Each level shows clusters for that level.
+* Leaf – individual clusters
+* Root – one cluster
+* A cluster at level $i$ is the union of its children clusters at level $i+1$
+
+
+![A dendrogram](http://nikbearbrown.com/YouTube/MachineLearning/M04/Dendrogram.png)
+
+*A dendrogram*
+
+### Multidimensional scaling (MDS) 
+
+[Multidimensional scaling (MDS)](https://en.wikipedia.org/wiki/Multidimensional_scaling) is a means of visualizing the level of similarity of individual cases of a high-dimenional dataset.
+
+Given a dataset of I objects (colors, faces, stocks, . . .) on which a distance function is defined, $\delta_{i,j} :=$ distance between $i-th$ and $j-th$ objects. These distances are the entries of the dissimilarity matrix
+$$
+\Delta := 
+\begin{pmatrix}
+\delta_{1,1} & \delta_{1,2} & \cdots & \delta_{1,I} \\
+\delta_{2,1} & \delta_{2,2} & \cdots & \delta_{2,I} \\
+\vdots & \vdots & & \vdots \\
+\delta_{I,1} & \delta_{I,2} & \cdots & \delta_{I,I}
+\end{pmatrix}.
+$$
+
+The goal of MDS is, given $\Delta$, to find I vectors $x_1,\ldots,x_I \in \mathbb{R}^N$ such that $\|x_i - x_j\| \approx \delta_{i,j}$ for all $i,j\in {1,\dots,I}$, where $\|\cdot\|$ is a vector norm. In classical MDS, this norm is the Euclidean distance, but,  it may be a metric or arbitrary distance function.  
+
+In other words, MDS attempts to find an embedding from the I objects into $\mathbb{R}^N$ such that distances are preserved.
+
+![multidimensional scaling](https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/RecentVotes.svg/800px-RecentVotes.svg.png)
+
+*An example of classical multidimensional scaling applied to voting patterns in the United States House of Representatives*
+
+### Confusion plots
+
+confusion plot is a plot of the [confusion matrix](https://en.wikipedia.org/wiki/Confusion_matrix). A confusion matrix, also known as a contingency table or an error matrix. 
+
+
+A confusion matrix is a 2x2 table with counts of the following in each of its quadrents.
+
+```
+true positive (TP)
+eqv. with hit
+true negative (TN)
+eqv. with correct rejection
+false positive (FP)
+eqv. with false alarm, Type I error
+false negative (FN)
+eqv. with miss, Type II error
+```
+
+## Cluster evaluation metics
+
+Cluster evaluation metics quantitate within cluster cohesion and between cluster Separation.
+
+### Measuring Cluster Validity via Correlation
+
+Compute can compute the correlation between the two matrices (a proximity patrix and “incidence” matrix). Since the matrices are symmetric, only the correlation between $frac{n(n-1)}{2}$ entries needs to be calculated. (ie. above or below the diagonal).
+
+High correlation indicates that points that belong to the same cluster are close to each other. This is not a good measure for some density or contiguity based clusters.
+
+*Proximity Matrix*
+
+A proximity is a measurement of the similarity or dissimilarity, broadly defined, of a pair of objects. If measured for all pairs of objects in a set (e.g. driving distances among a set of U.S. cities), the proximities are represented by an object-by-object proximity matrix.
+
+“Incidence” Matrix
+
+An “incidence” matrix
+
+* One row and one column for each data point
+* An entry is 1 if the associated pair of points belong to the same cluster
+* An entry is 0 if the associated pair of points belongs to different clusters
+
+### Using Similarity Matrix for Cluster Validation
+
+One can sort the similarity matrix with respect to cluster labels amd then plot.
+
+### Davies–Bouldin index  
+
+The [Davies–Bouldin index](https://en.wikipedia.org/wiki/Davies%E2%80%93Bouldin_index) can be represented by the formula below:
+
+$$ DB = \frac {1} {n} \sum_{i=1}^{n} \max_{j\neq i}\left(\frac{\sigma_i + \sigma_j} {d(c_i,c_j)}\right)
+$$
+
+where n is the number of clusters,$c_x$ is the centroid of cluster x, $\sigma_x$ is the average distance of all elements in cluster x to centroid $c_x$, and $d(c_i,c_j)$ is the distance between centroids $c_i$ and $c_j$.
+
+Clusters with low intra-cluster distances (high intra-cluster similarity) and high inter-cluster distances (low inter-cluster similarity) will have a low Davies–Bouldin index.
+
+### Dunn index
+
+The [Dunn index](https://en.wikipedia.org/wiki/Dunn_index) aims to identify dense and well-separated clusters. It is defined as the ratio between the minimal inter-cluster distance to maximal intra-cluster distance. For each cluster partition, the Dunn index can be calculated by the following formula:
+
+$$
+D = \frac{\min_{1 \leq i < j \leq n} d(i,j)}{\max_{1 \leq k \leq n} d^{\prime}(k)} \,
+$$
+
+where $d(i,j)$ represents the distance between clusters $i$ and $j$, and $d '(k)$ measures the intra-cluster distance of cluster $k$. The inter-cluster distance $d(i,j)$ between two clusters may be any number of distance measures, such as the distance between the centroids of the clusters. 
+
+Clusters with high intra-cluster similarity and low inter-cluster similarity, produce clusters with high Dunn index (i.e. are more desirable).
+
+
+### Silhouette coefficient
+
+The silhouette coefficient contrasts the average distance to elements in the same cluster with the average distance to elements in other clusters. Objects with a high silhouette value are considered well clustered, objects with a low value may be outliers. This index works well with k-means clustering, and is also used to determine the optimal number of clusters.
+
+
+### Purity  (as an evaluation measure)
+
+Simple measure: purity, the ratio between the dominant class in the cluster $c_i$ and the size of cluster$c_i$. To compute purity , each cluster is assigned to the class which is most frequent in the cluster, and then the accuracy of this assignment is measured by counting the number of correctly assigned documents and dividing by $N$. Formally: 
+
+$$
+\mbox{purity}(\mathbb{C_i}) = \frac{1}{n_i} \sum_k \max_j (n_{i,j}) \quad j \in \mathbb{C}
+$$
+
+Note that this is biased because having n clusters for n data objects maximizes purity.
+
+### Entropy (as an evaluation measure)
+
+The notion of entropy can be used to evauluate the "stickness"  or mutual information between classes and clusters They can measure how much knowing one of these variables reduces uncertainty about the other.  In a sense we want to measure how "sticky" within cluster data is and how  "non-sticky" the between cluster data is. There are several ways to use entropy to measure "stickness."
+
+#### Mutual Information
+
+[Mutual information](https://en.wikipedia.org/wiki/Mutual_information) quantifies the mutual dependence of the two random variables. It is a measure of the “stickiness” between two items. It measures how much knowing one of these variables reduces uncertainty about the other. We can use mutual information to quantify the association between two tags. Mutual information is given by:
+$$
+ I(X;Y) = \sum_{y \in Y} \sum_{x \in X} 
+                 p(x,y) \log{ \left(\frac{p(x,y)}{p(x)\,p(y)}
+                              \right) }, \,\!
+                              
+$$
+
+where $p(x,y)$ is the joint probability distribution function of $X$ and $Y$, and $p(x)$ and $p(y)$ are the marginal probability distribution functions of $X$ and $Y$ respectively.
+
+#### Kullback-Leibler divergence
+
+[Kullback-Leibler divergence](https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence) is a non-symmetric measure of the difference between two probability distributions. The Kullback-Leibler measure goes by several names: relative entropy, discrimination information, Kullback-Leibler (KL) number, directed divergence, informational divergence, and cross entropy. Kullback-Leibler divergence is a measure of the difference between the observed entropy and its excepted entropy. We calculate the KL divergence by weighting one distribution (like an observed frequency distribution) by the log of probabilities of some other distribution. For discrete probability distributions P and Q, the Kullback–Leibler divergence of Q from P is defined to be:
+
+$$
+D_{\mathrm{KL}}(P\|Q) = \sum_i P(i) \, \ln\frac{P(i)}{Q(i)}
+$$
+
+In words, it is the expectation of the logarithmic difference between the probabilities P and Q, where the expectation is taken using the probabilities P.
+
+#### Jaccard similarity coefficient 
+
+The [Jaccard index](https://en.wikipedia.org/wiki/Jaccard_index), also known as the Jaccard similarity coefficient (originally coined coefficient de communauté by Paul Jaccard), is a statistic used for comparing the similarity and diversity of sample sets. If $\mathbf{x} = (x_1, x_2, \ldots, x_n) and \mathbf{y} = (y_1, y_2, \ldots, y_n$) are two vectors with all real $x_i, y_i \geq 0$, then their Jaccard similarity coefficient is defined as
+
+$$
+J(\mathbf{x}, \mathbf{y}) = \frac{\sum_i \min(x_i, y_i)}{\sum_i \max(x_i, y_i)},
+$$
+
+and Jaccard distance
+
+$$
+d_J(\mathbf{x}, \mathbf{y}) = 1 - J(\mathbf{x}, \mathbf{y}).
+$$
+
+
+
+### Rand index
+
+The [Rand index](https://en.wikipedia.org/wiki/Rand_index) or Rand measure (named after William M. Rand) in statistics, and in particular in data clustering, is a measure of the similarity between two data clusterings. A form of the Rand index may be defined that is adjusted for the chance grouping of elements, this is the adjusted Rand index. 
+
+Given a set of $n$ elements $S = \{o_1, \ldots, o_n\}$ and two partitions of $S$ to compare, $X = \{X_1, \ldots, X_r\}$, a partition of $S$ into $r$ subsets, and $Y = \{Y_1, \ldots, Y_s\}$, a partition of $S$ into $s$ subsets, define the following:  
+
+* $a$, the number of pairs of elements in $S$ that are in the same set in $X$  and in the same set in $Y$ (i.e. true positive (TP))
+* $b$, the number of pairs of elements in $S$  that are in different sets $X$  and in different sets in $Y$ (i.e false positive (FP))
+* $c$, the number of pairs of elements in $S$  that are in the same set in $X$ and in different sets in $Y$ (false negative (FN))
+* $d$, the number of pairs of elements in $S$  that are in different sets in $X$ and in the same set in $Y$ (i.e. true negative (TN))
+
+The Rand index, R, is:
+
+$$
+ RI = \frac{a+b}{a+b+c+d} = \frac{a+b}{{n \choose 2 }}
+$$ 
+ 
+Intuitively, $a + b$ can be considered as the number of agreements between $X$ and $Y$ and $c + d$ as the number of disagreements between $X$ and $Y$.
+
+
+![Rand Index](http://nikbearbrown.com/YouTube/MachineLearning/M04/Rand_Index.png)
+
+The Rand index can be used to create a cluster F-measure.
+
+$$
+ RI = \frac{a+b}{a+b+c+d}
+$$ 
+ 
+ 
+Compare with standard Precision and Recall:
+
+
+$$
+ Precision = \frac{a}{a+c}
+$$ 
+
+$$
+ Recall = \frac{a}{a+d}
+$$ 
+
+ 
+Compare with a confusion matrix:
+
+A confusion matrix is a 2x2 table with counts of the following in each of its quadrents.
+
+```
+true positive (TP) 
+eqv. with hit
+true negative (TN)
+eqv. with correct rejection
+false positive (FP)
+eqv. with false alarm, Type I error
+false negative (FN)
+eqv. with miss, Type II error
+``` 
+
+# K-means clustering in R
+
+K-means clustering in R.  Can we cluster gender by height using the Galton regression data?
+ 
+
+```{r}
+qplot(x=Height, data=h.gend, geom="density", group=Gender, color=Gender)
+k<-2
+galton.2.clust<-kmeans(h.gend[,c("Height")],k)
+galton.2.clust
+
+```
+
+
+Create confusion matrix and plot it.  Note we can only do this becuase we know what the gender actually is. Note that runningh it twice can get different results.
+
+
+```{r}
+cm<-table(h.gend$Gender,galton.2.clust$cluster) # Confustion Matrix
+cm
+plot(cm)
+galton.2.clust<-kmeans(h.gend[,c("Height")],k)
+galton.2.clust
+cm2<-table(h.gend$Gender,galton.2.clust$cluster) # Confustion Matrix
+cm2
+plot(cm2)
+```
+
+Clustering the World Bank data.  
+
+```{r}
+head(wb)
+k<-2
+wb.2.clust<- kmeans(wb,k) 
+wb.2.clust
+k<-3
+wb.3.clust<- kmeans(wb,k) 
+wb.3.clust
+```
+
+Determining number of clusters. There is a number of methods for The issue of determining “the right number of clusters” including Hartigan’s rule, averaged Silhouette width and Gap statistic.
+
+```{r}
+# Determining number of clusters 
+sos <- (nrow(wb)-1)*sum(apply(wb,2,var))
+for (i in 2:10) sos[i] <- sum(kmeans(wb, centers=i)$withinss)
+plot(1:10, sos, type="b", xlab="Number of Clusters", ylab="sum of squares")
+plot(2:10, sos[c(2:10)], type="b", xlab="Number of Clusters", ylab="sum of squares")
+# Hartigans's rule  FitKMean (similarity)
+# require(useful)
+best<-FitKMeans(wb,max.clusters=10, seed=111) 
+PlotHartigan(best)
+```
+
+A k of 6?
+
+```{r}
+k<-6
+wb.6.clust<- kmeans(wb,k) 
+wb.6.clust
+trails<-33
+wb.6.clust.33<- kmeans(wb,k, nstart = trails) 
+wb.6.clust.33
+cm<-table(dwb$Country,wb.6.clust.33$cluster) # Confustion Matrix
+cm
+```
+
+Multidimensional scaling (MDS) 
+
+```{r}
+# require useful mds
+# require(useful)
+# plot(wb.2.clust)
+```
+
+## Evaluating model performance 
+
+```{r}
+# Evaluating model performance 
+# look at the size of the clusters
+wb.6.clust$size
+# look at the cluster centers
+wb.6.clust$centers
+names(wb)
+# mean of 'Per.capita.income' by cluster 
+pci<-aggregate(data = wb, Per.capita.income ~ wb.6.clust$cluster, mean)
+pci
+# mean of 'Literacy' by cluster 
+l<-aggregate(data = wb, Literacy ~ wb.6.clust$cluster, mean)
+l
+# mean of 'Infant.mortality' by cluster 
+im<-aggregate(data = wb, Infant.mortality ~ wb.6.clust$cluster, mean)
+im
+# mean 'Life.expectancy'  by cluster 
+le<-aggregate(data = wb, Life.expectancy ~ wb.6.clust$cluster, mean)
+le
+cm.3=table(wb$Per.capita.income,wb.6.clust$cluster)
+cm.3
+print(wb.6.clust)
+```
+
+### Plotting Clusters
+
+```{r}
+plot(wb,col=wb.6.clust$cluster)     # Plot Clusters
+plot(wb[c("Per.capita.income","Literacy")],col=wb.6.clust$cluster)      
+points(wb.6.clust$centers, col = 1:2, pch = 8) 
+# Centroid Plot against 1st two discriminant functions
+clusplot(wb, wb.6.clust$cluster, color=TRUE, shade=TRUE, labels=2, lines=0)
+# library(fpc)
+# plotcluster(wb,wb.6.clust$cluster)
+```
+
+
+# K-medoids clustering in R
+
+K-medoids clustering in R. PAM can handle catagerical data and is robust to outliers
+
+
+```{r}
+# PAM
+k<-4
+wb.pam.4.clust<- pam(wb,k, keep.diss = TRUE, keep.data = TRUE)
+wb.pam.4.clust
+plot(wb.pam.4.clust, which.plots = 2)
+# long lines good - means greater within cluster similarity
+```
+
+## Gap statistic
+
+Gap statistic
+
+clusGap() calculates a goodness of clustering measure, the “gap” statistic. For each number of clusters k, it compares $\log(W(k))$ with $E^*[\log(W(k))]$ where the latter is defined via bootstrapping, i.e. simulating from a reference distribution.  
+
+maxSE(f, SE.f) determines the location of the maximum of f, taking a “1-SE rule” into account for the *SE* methods. The default method "firstSEmax" looks for the smallest k such that its value f(k) is not more than 1 standard error away from the first local maximum. This is similar but not the same as "Tibs2001SEmax", Tibshirani et al's recommendation of determining the number of clusters from the gap statistics and their standard deviations.  
+
+See [clusGap](https://stat.ethz.ch/R-manual/R-devel/library/cluster/html/clusGap.html)   
+
+```{r}
+gap<-clusGap(wb,FUNcluster=pam,K.max=10) # Bootstrapping
+gap$Tab
+gdf<-as.data.frame(gap$Tab)
+head(gdf)
+qplot(x=1:nrow(gdf),y=logW,data = gdf,geom="line",color="red")+geom_point(aes(y=logW),color="orange")+geom_line(aes(y=E.logW),color="blue")+geom_point(aes(y=E.logW),color="purple")
+# Gap statistic
+qplot(x=1:nrow(gdf),y=gap,data = gdf,geom="line",color="red")+geom_point(aes(y=gap),color="orange")+geom_errorbar(aes(ymin=gap-SE.sim,ymax=gap+SE.sim),color="brown")
+```
+
+
+# Hierarchical clustering in R
+
+Hierarchical clustering in R
+
+Hierarchical Clustering for the wholesale customers data set.
+
+```{r}
+spend.h.clust<- hclust(d=dist(spend))
+plot(spend.h.clust)
+spend.h.clust.si<- hclust(dist(spend), method = "single")
+spend.h.clust.co<- hclust(dist(spend), method = "complete")
+spend.h.clust.av<- hclust(dist(spend), method = "average")
+spend.h.clust.ce<- hclust(dist(spend), method = "centroid")
+plot(spend.h.clust.si, labels = FALSE)
+plot(spend.h.clust.co, labels = FALSE)
+plot(spend.h.clust.av, labels = FALSE)
+plot(spend.h.clust.ce, labels = FALSE)
+```
+
+
+Plotting to deterimine the cluster level.
+
+```{r}
+plot(spend.h.clust, labels = FALSE)
+rect.hclust(spend.h.clust, k=3, border="red")
+rect.hclust(spend.h.clust, k=5, border="green")
+rect.hclust(spend.h.clust, k=9, border="blue")
+```
+
+Hierarchical clustering using centroid clustering and squared Euclidean distance
+
+```{r}
+h_c <- hcluster(spend,link = "ave") # require(amap)
+plot(h_c)
+plot(h_c, hang = -1)
+
+
+### centroid clustering and squared Euclidean distance
+h_c<- hclust(dist(spend)^2, "cen")
+
+### Cutting the tree into 20 clusters and reconstruct upper part of the tree from cluster center
+memb <- cutree(h_c, k = 20)
+cent <- NULL
+for(k in 1:20){
+  cent <- rbind(cent, colMeans(spend[,-1][memb == k, , drop = FALSE]))
+}
+h_c1 <- hclust(dist(cent)^2, method = "cen", members = table(memb))
+opar <- par(mfrow = c(1, 2))
+plot(h_c,  labels = FALSE, hang = -1, main = "Original Tree")
+plot(h_c1, labels = FALSE, hang = -1, main = "Re-start from 20 clusters")
+par(opar)
+```
+
+
+Other combinations 
+
+```{r}
+## other combinations 
+
+h_c <- hcluster(spend,method = "euc",link = "ward", nbproc= 1,
+                doubleprecision = TRUE)
+plot(h_c, hang = -1)
+
+h_c <- hcluster(spend,method = "max",link = "single", nbproc= 2, 
+                doubleprecision = TRUE)
+plot(h_c, hang = -1)
+
+h_c <- hcluster(spend,method = "man",link = "complete", nbproc= 1,
+                doubleprecision = TRUE)
+plot(h_c, hang = -1)
+
+h_c <- hcluster(spend,method = "can",link = "average", nbproc= 2,
+                doubleprecision = TRUE)
+plot(h_c, hang = -1)
+
+h_c <- hcluster(spend,method = "bin",link = "mcquitty", nbproc= 1,
+                doubleprecision = FALSE)
+plot(h_c, hang = -1)
+
+h_c <- hcluster(spend,method = "pea",link = "median", nbproc= 2,
+                doubleprecision = FALSE)
+plot(h_c, hang = -1)
+
+h_c <- hcluster(spend,method = "cor",link = "centroid", nbproc= 1,
+                doubleprecision = FALSE)
+plot(h_c, hang = -1)
+
+h_c <- hcluster(spend,method = "spe",link = "complete", nbproc= 2,
+                doubleprecision = FALSE)
+plot(h_c, hang = -1)
+```
+
+
+# Readings  
+  
+An Introduction to Statistical Learning with Applications in R (2013)
+Authors: Gareth James, Daniela Witten, Trevor Hastie, Robert Tibshirani
+Free online via SpringerLink (http://link.Springer.com/) http://link.springer.com/book/10.1007/978-1-4614-7138-7
+
+* Chapter 14 Unsupervised Learning   
+* Chapter 13 Prototype Methods and Nearest-Neighbors   
+# Resources  
+
+[UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/)
+
+[K-means clustering is not a free lunch](http://varianceexplained.org/r/kmeans-free-lunch/)
+
+# Assingment
+
+* Go to the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/) and find a dataset for clustering. Every student MUST use a different dataset so you MUST get approved for which you can going to use. You will use this dataset for this modeule on unsupervised learning and the next on supervised learning.
+* Cluster some of your data using k-means, PAM and hierarchical clustering. Answer the following questions:
+    * How did you choose a k for k-means?
+    * Evaluating model performance.How do the clustering appaoches compare on the same data?
+    * Generate and plot confusion matrices for the k-means and PAM. What do they tell you?
+    * Generate centroid plots against 1st two discriminant functions for k-means and PAM. What do they tell you?
+    * Generate siloutte plots for  PAM. What do they tell you?    
+    * For the hierarchical clustering use all linkage methods (Single Link, Complete Link, Average Link,  Centroid and Minimum energy clustering) and generate dendograms. How they compare on the same data?
+    *  For the hierarchical clustering use both agglomerative and divisive clustering with a linkage method of your choice and generate dendograms. How they compare on the same data?
+    *  For the hierarchical clustering use centroid clustering and squared Euclidean distance and generate dendograms. How they compare on the same data?
+
+
+
+   
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```

@@ -1,0 +1,68 @@
+---
+title: "M4L3_Homework_Assignment_Answers"
+author: "Victor Gomes"
+date: "March 22, 2016"
+output: word_document
+---
+
+This homework assignment focuses on Expectation-maximization (EM).
+
+## Additional packages needed
+ 
+To run the code in M4L3_Homework_Assignment_Answers.Rmd you may need additional packages.
+
+* If necessary install following packages.
+
+`install.packages("fitdistrplus");`
+`install.packages("mclust");`
+
+```{r}
+require(fitdistrplus)
+require(mclust)
+```
+
+
+```{r}
+data_url <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data'
+iris_data <-read.table(url(data_url), sep=",")
+colnames(iris_data)<-c("SepalLength","SepalWidth","PetalLength","PetalWidth","Class")
+iris <- iris_data[1:4]
+```
+
+Yatish Jain's answer
+
+Lets take a look at how the data is distributed using the Cullen and Frey Graph.
+```{r}
+descdist(iris$SepalLength, discrete = FALSE)
+descdist(iris$SepalWidth, discrete = FALSE)
+descdist(iris$PetalLength, discrete = FALSE)
+descdist(iris$PetalWidth, discrete = FALSE)
+```
+From the above graph we can see that  Sepal length can be a beta distribution and Sepal width can be either lognormal or gamma distribution whereas Petal Length and Petal width are mostly uniform distrubutions.
+
+###EM Based Clustering
+
+* How did you choose a model for EM? Evaluate the model performance.
+
+As the data seems to be a mixture of distributions we will be using EM model where we use the E step to sum the expectations of statistics and M step to maximise the linear function. As all the data doesn't belong to linear function it is good to use EM model here.
+
+```{r}
+fit<-Mclust(iris)
+fit
+summary(fit)
+```
+
+```{r}
+# BIC
+plot(fit,what="BIC")
+plot(fit, what = "classification")
+plot(fit, what = "uncertainty")
+plot(fit, what = "density")
+BIC = mclustBIC(iris)
+summary(BIC)
+```
+
+* Cluster some of your data using EM based clustering that you also used for k-means, PAM, and hierarchical clustering. How do the clustering approaches compare on the same data?
+
+EM clustering approach performs very similar to k-means, pam of heirarchical clustering.
+

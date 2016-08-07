@@ -1,0 +1,510 @@
+---
+title: "Association Rules"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson we cover association rule learning theory, apply and evaluate association rule learning to generate predictive rules.
+
+
+## Additional packages needed
+ 
+To run the code in M04_Lesson_04.Rmd you may need additional packages.
+
+* If necessary install these packages.
+
+`install.packages("arules");`    
+`install.packages("arulesViz");`       
+`install.packages("Matrix");`    
+      
+
+```{r}
+require(arules)
+require(arulesViz)
+require(Matrix)
+```
+
+## Data
+
+We'll be using the "Adult" database that comes with the [arules](https://cran.r-project.org/web/packages/arules/index.html) package.
+
+```{r}
+data(Adult)
+summary(Adult)
+```
+
+Look at the first five transactions.
+
+
+```{r}
+# look at the first five transactions
+inspect(Adult[1:10])
+```
+
+Look at the frequency 
+
+```{r}
+# Look at the frequency 
+itemFrequency(Adult[1:100, 1:10])
+```
+
+Plot the frequency.
+
+```{r}
+# plot the frequency 
+# if getting the error
+# Error in plot.new() : figure margins too large in RStudio
+# use dev.off() to Rrsetting your graphics device 
+# dev.off() will remove any leftover options or settings 
+# 
+itemFrequencyPlot(Adult, support = 0.1)
+itemFrequencyPlot(Adult, topN = 20)
+```
+
+Visualization of some of the transactions.
+
+```{r}
+# a visualization of first ten transactions
+image(Adult[1:10])
+# visualization of a random sample of 100 transactions
+image(sample(Adult, 100))
+```
+
+*Details*  
+
+The "Adult" database was extracted from the census bureau database found at [http://www.census.gov/ftp/pub/DES/www/welcome.html](http://www.census.gov/ftp/pub/DES/www/welcome.html) in 1994 by Ronny Kohavi and Barry Becker. It was originally used to predict whether income exceeds USD 50K/yr based on census data. We added the attribute income with levels small and large (>50K). We prepared the data set for association mining as shown in the section 
+
+* Data References*
+
+A. Asuncion & D. J. Newman (2007): [UCI Repository of Machine Learning Databases](http://archive.ics.uci.edu/ml/). Irvine, CA: University of California, Department of Information and Computer Science.
+
+
+# Association rules
+
+[Association rule learning](https://en.wikipedia.org/wiki/Association_rule_learning) is a unsupervised method of generating "If this then that" type rules based on statistical associations in transactional data.  A rule like $\{\mathrm{strawberries, chocolate}\} \Rightarrow \{\mathrm{ice cream}\}$ for if somenody buys strawberries and chocolate together, they are likely to also buy hamice cream meat. It is intended to identify "strong rules" that is, predictive rules.
+
+
+
+Following the original definition by [Agrawal et al.](http://dl.acm.org/citation.cfm?doid=170035.170072) the problem of association rule mining is defined as:
+Let $I=\{i_1, i_2,\ldots,i_n\}$ be a set of n binary attributes called items.
+
+Let $D = \{t_1, t_2, \ldots, t_m\}$ be a set of transactions called the database.
+Each transaction in $D$ has a unique transaction ID and contains a subset of the items in $I$.  
+
+A rule is defined as an implication of the form:
+$X \Rightarrow Y$ Where $X, Y \subseteq I and X \cap Y = \emptyset$.  
+
+Every rule is composed by two different set of items, also known as itemsets, X an Y, where X is called antecedent or left-hand-side (LHS) and Y consequent or right-hand-side (RHS).
+To illustrate the concepts, we use a small example from the supermarket domain. The set of items is $I= \{\mathrm{milk, bread, butter, cheese, macaroni}\}$ and in the table is shown a small database containing the items, where, in each entry, the value 1 means the presence of the item in the corresponding transaction, and the value 0 represent the absence of an item in a that transaction.
+An example rule for the supermarket could be $\{\mathrm{butter, bread}\} \Rightarrow \{\mathrm{milk}\}$ meaning that if butter and bread are bought, customers also buy milk.
+
+An Association Rule: is an implication of the form $X \Rightarrow  Y$, where $X, Y \Rightarrow I$
+
+An [association](https://en.wikipedia.org/wiki/Association_(statistics)) is any relationship between two measured quantities that renders them statistically dependent. That is,  the  [conditional probabilities] of A given B and B given A are not independent.
+
+$\mathrm{P}(A \cap B) = \mathrm{P}(A)\mathrm{P}(B) \Leftrightarrow \mathrm{P}(B) = \mathrm{P}(B\mid A)$
+
+That is, two random variables are statistically in dependent if the occurrence of B does not affect the probability of A, and vice versa. Two random variables are statistically in dependent if the occurrence of B does affect the probability of A, and vice versa. 
+
+The term "association" is closely related to the term [correlation](https://en.wikipedia.org/wiki/Correlation_and_dependence) and to the term [mutual information](https://en.wikipedia.org/wiki/Mutual_information).  
+
+![Venn diagram dependent independent events](http://nikbearbrown.com/YouTube/MachineLearning/M04/venn_diagram_dependent_independent_events.png)
+
+*Venn diagram dependent independent events*  
+
+To illustrate the concepts, we use a small example from a small grocery. The set of items is $I= \{\mathrm{milk, bread, butter, cheese, macaroni}\}$ and in the table is shown a small database containing the items, where, in each entry, the value 1 means the presence of the item in the corresponding transaction, and the value 0 represent the absence of an item in a that transaction.
+
+Example grocery database with 5 transactions and 5 items
+
+$$
+\mathbf{tb} = \left[\begin{array}
+{rrrrrr}
+ID & milk & bread & butter & cheese & macaroni \\
+1 & 1 & 1 & 0 & 0 & 0  \\
+2 & 1 & 1 & 1 & 1 & 1 \\
+3 & 0 & 0 & 1 & 1 & 1 \\
+4 & 1 & 1 & 1 & 0 & 0 \\
+5 & 1 & 1 & 0 & 0 & 0 \\
+\end{array}\right]
+$$
+
+
+An example rule for the supermarket could be $\{\mathrm{butter, bread}\} \Rightarrow \{\mathrm{milk}\}$ meaning that if butter and bread are bought, customers also buy milk.
+
+Note that even small databases many rules can be generated and we need metrics to to evaluate whether a rule can be considered statistically significant. Specifically the metrics of *support, confidence, Lift and conviction* are used as described below:
+
+Given:
+ a set I of all the items; 
+ a database D of transactions;
+ minimum support s;
+ minimum confidence c; 
+ possibly a minimum fift l;
+ possibly a minimum conviction co;
+
+Find:
+ all association rules $X \Rightarrow Y$ with a minimum support s and confidence c.
+
+
+# Support, Confidence, Lift and Conviction
+
+In order to select interesting rules from the set of all possible rules, constraints on various measures of significance and interest are used. The best-known constraints are minimum thresholds on support and confidence.
+Let $X$ an item-set, $X \Rightarrow Y$ an association rule and T a set of transactions of a given database.
+
+## Support  
+
+The support value of $X$ with respect to $T$ is defined as the proportion of transactions in the database which contains the item-set $X$. That is, the fraction of transactions that contain the itemset.
+
+
+The support count ($\sigma$) is the frequency of occurrence of an itemset
+
+
+In formula: $\mathrm{supp}(X)=\frac{\sigma}{|X|}$ divides the support count by the cardinality of the item-set, $X$.
+
+In the example database, the item-set$ \{\mathrm{milk, bread, butter}\}$ has a support of $2/5=0.4$ since it occurs in 40% of all transactions (2 out of 5 transactions). The argument of $\mathrm{supp}()$ is a set of preconditions, and thus becomes more restrictive as it grows (instead of more inclusive).  
+
+## Confidence  
+
+The confidence value of a rule, $X \Rightarrow Y$, with respect to a set of transactions $T$, is the proportion the transactions that contains $X$ which also contains $Y$. That is, it measures how often items in $Y$ appear in transactions that contain $X$:
+
+$$\mathrm{conf}(X \Rightarrow Y) = \mathrm{supp}(X \cup Y) / \mathrm{supp}(X)$$
+
+For example, the rule $\{\mathrm{butter,  bread}\} \Rightarrow \{\mathrm{milk}\}$ has a confidence of $0.4/0.4=1.0$ in the database, which means that for 100% of the transactions containing butter and bread the rule is correct (100% of the times a customer buys butter and bread, milk is bought as well).  Note also that 4 of 5 times milk is bought with bread.
+
+
+Note that $supp(X \cup Y)$ means the support of the union of the items in X and Y. This is somewhat confusing since we normally think in terms of probabilities of events and not sets of items. We can rewrite $supp(X \cup Y)$ as the joint probability $P(E_X \cap E_Y)$, where $E_X and E_Y$ are the events that a transaction contains itemset X or Y, respectively.  
+
+Thus confidence can be interpreted as an estimate of the conditional probability $P(E_Y | E_X)$, the probability of finding the RHS of the rule in transactions under the condition that these transactions also contain the LHS.  
+
+## Lift (Sometimes used)  
+
+The lift of a rule is defined as:  
+
+$\mathrm{lift}(X\Rightarrow Y) = \frac{ \mathrm{supp}(X \cup Y)}{ \mathrm{supp}(X) \times \mathrm{supp}(Y) }$ or the ratio of the observed support to that expected if X and Y were independent.  
+
+For Example, the rule $\{\mathrm{milk, bread}\} \Rightarrow \{\mathrm{butter}\}$ has a lift of $\frac{0.4}{0.4 \times 0.4} = 1.25$.
+
+
+## Conviction (Sometimes used)    
+
+The conviction of a rule is defined as  $\mathrm{conv}(X\Rightarrow Y) =\frac{ 1 - \mathrm{supp}(Y) }{ 1 - \mathrm{conf}(X\Rightarrow Y)}$.  
+
+For Example, the rule $\{\mathrm{milk, bread}\} \Rightarrow \{\mathrm{butter}\}$ has a conviction of $\frac{1 - 0.4}{1 - .5} = 1.2$ , and can be interpreted as the ratio of the expected frequency that X occurs without Y (that is to say, the frequency that the rule makes an incorrect prediction) if X and Y were independent divided by the observed frequency of incorrect predictions. In this example, the conviction value of 1.2 shows that the rule $\{\mathrm{milk, bread}\} \Rightarrow \{\mathrm{butter}\}$ would be incorrect 20% more often (1.2 times as often) if the association between $X$ and $Y$ was purely random chance.
+
+# TxP matrices, sparse matrices, adjacency lists
+
+## Sparse matrices
+
+A matrix is typically stored as a two-dimensional array. Each entry in the array represents an element ai,j of the matrix and is accessed by the two indices i and j. Conventionally, i is the row index, numbered from top to bottom, and j is the column index, numbered from left to right. For an m × n matrix, the amount of memory required to store the matrix in this format is proportional to m × n (disregarding the fact that the dimensions of the matrix also need to be stored).
+
+In a transaction database with a lot of items we would expect rows to be dominated by zeros. A customer who bought 1 item in a 10,000 item database would have a single 1 and 9,999 zeros.
+
+This is ineffecient and R has different data structures can be used to substainly reduce memory 
+
+Formats can be divided into two groups:
+
+Those that support efficient modification, such as DOK (Dictionary of keys), 
+LIL (List of lists), or COO (Coordinate list). These are typically used to construct the matrices.
+
+Those that support efficient access and matrix operations, such as CSR (Compressed Sparse Row) or CSC (Compressed Sparse Column).
+
+
+##  Sparse Matrices in R  
+
+There are a few packages that support sparse matrices in R: Matrix, slam, and the glmnet package
+ 
+The Matrix, Note that the arules depends on the Matrix and likely uses it to speed up its computations.
+
+
+```{r}
+n<-333
+m1 <- matrix(0, nrow = n, ncol = n)
+m2 <- Matrix(0, nrow = n, ncol = n, sparse = TRUE)
+n1<-object.size(m1)
+n1 # 887312 bytes
+n2<-object.size(m2)
+n2 # 2960 bytes
+n2/n1
+n2/n1*100
+m3 <- matrix(1, nrow = n, ncol = n)
+m4 <- Matrix(1, nrow = n, ncol = n, sparse = TRUE)
+n1<-object.size(m3)
+n1 # 887312 bytes
+n2<-object.size(m4)
+n2 # 670296 bytes
+n2/n1*100
+m5 <-matrix(rbinom(n * n, 1, 0.5), ncol = n, nrow = n)
+m6 <-Matrix(rbinom(n * n, 1, 0.5), ncol = n, nrow = n, sparse = TRUE)
+m7 <-Matrix(rbinom(n * n, 1, 0.5), ncol = n, nrow = n)
+n1<-object.size(m5)
+n1 # 443760 bytes
+n2<-object.size(m6)
+n2 # 665552 bytes
+n2/n1*100
+n3<-object.size(m7)
+n3
+n3/n1*100
+n2/n3*100
+```
+
+
+An alternative to the Matrix package is the [slam package](https://cran.r-project.org/web/packages/slam/index.html) by Kurt Hornik. 
+ 
+ 
+Another alternative to the Matrix package is the [glmnet package](https://cran.r-project.org/web/packages/glmnet/index.html) which extends (and depends) on [Matrix](https://cran.r-project.org/web/packages/Matrix/index.html) but allows full and sparse matrices to be used without any code changes.
+ 
+ 
+# Algorithms
+
+Many algorithms for generating association rules fall into two groups: a) algorithms for mining frequent itemsets. and b) algorithms to generate rules from frequent itemsets.
+
+Some well known for mining frequent itemsets are Apriori, Eclat and FP-Growth. We'll focus on the Apriori algorithm. 
+
+Brute-force approach:
+* List all possible association rules
+* Compute the support and confidence for each rule
+* Prune rules that fail the minsup and minconf thresholds
+*  Computationally prohibitive! (Given $d$ items, there are $2^d$ possible candidate itemsets)
+
+Frequent Itemset Generation Strategies:
+
+*  Reduce the number of candidates (M)
+  -- Complete search: M=2d. Use pruning techniques to reduce M.
+
+*  Reduce the number of transactions (N) --skipping
+  -- Reduce size of N as the size of itemset increases
+
+
+*  Reduce the number of comparisons (NM)
+  -- Use efficient data structures to store the candidates or transactions. No need to match every candidate against every transaction.
+
+
+
+## Apriori algorithm    
+
+The [Apriori algorithm](https://en.wikipedia.org/wiki/Apriori_algorithm)
+is the best-known algorithm to mine association rules. It uses a breadth-first search strategy to count the support of itemsets and uses a candidate generation function which exploits the downward closure property of support.
+
+Apriori principle:
+* If an itemset is frequent, then all of its subsets must also be frequent. That is, any subset of a frequent itemset is frequent.
+
+Apriori principle holds due to the following property of the support measure:
+
+$$ \forall X, Y: (X \subseteq Y) \Rightarrow s(X) \geq s(Y)$$
+
+
+Contrapositive:
+
+If an itemset is not frequent, none of its supersets are frequent.
+
+![Frequent Itemset Generation](http://nikbearbrown.com/YouTube/MachineLearning/M04/Frequent_Itemset_Generation.png)
+*Frequent Itemset Generation*
+
+![Illustrating Apriori Principle](http://nikbearbrown.com/YouTube/MachineLearning/M04/Illustrating_Apriori_Principle.png)
+*Illustrating Apriori Principle*
+
+
+## Apriori algorithm pseudocode  
+
+$Lk$: Set of frequent itemsets of size k (with min support)
+$Ck$: Set of candidate itemset of size k (potentially frequent itemsets)
+
+
+$$
+\begin{align}
+& \mathrm{Apriori}(T,\epsilon)\\
+&\qquad L_1 \gets \{ \mathrm{large~1-item sets} \} \\
+&\qquad k \gets 2\\
+&\qquad \mathrm{\textbf{while}}~ L_{k-1} \neq \ \emptyset \\
+&\qquad \qquad C_k \gets \{ a \cup \{b\} \mid a \in L_{k-1} \land b \not \in a \} - \{ c \mid \{ s \mid s \subseteq c \land |s| = k-1 \} \nsubseteq L_{k-1} \}\\
+&\qquad \qquad \mathrm{\textbf{for}~transactions}~t \in T\\
+&\qquad \qquad\qquad C_t \gets \{ c \mid c \in C_k \land c \subseteq t \} \\
+&\qquad \qquad\qquad \mathrm{\textbf{for}~candidates}~c \in C_t\\
+&\qquad \qquad\qquad\qquad \mathit{count}[c] \gets \mathit{count}[c]+1\\
+&\qquad \qquad L_k \gets \{ c \mid c \in C_k \land ~ \mathit{count}[c] \geq \epsilon \}\\
+&\qquad \qquad k \gets k+1\\
+&\qquad \mathrm{\textbf{return}}~\bigcup_k L_k
+\end{align}
+$$
+
+
+Apriori Advantages:
+* Uses large itemset property.  
+* Easily parallelized  
+* Easy to implement.  
+
+Apriori Disadvantages:
+* Assumes transaction database is memory resident.  
+* Requires many database scans.  
+
+
+Improving Apriori’s Efficiency
+
+* Hash-based itemset counting: A k-itemset whose corresponding hashing bucket count is below the threshold cannot be frequent
+* Transaction reduction: A transaction that does not contain any frequent k-itemset is useless in subsequent scans
+* Partitioning: Any itemset that is potentially frequent in DB must be frequent in at least one of the partitions of DB
+* Sampling: mining on a subset of given data, lower support threshold + a method to determine the completeness
+* Dynamic itemset counting: add new candidate itemsets only when all of their subsets are estimated to be frequent
+
+
+
+FP-growth algorithm    
+
+FP stands for frequent pattern. The [FP-growth algorithm](https://en.wikibooks.org/wiki/Data_Mining_Algorithms_In_R/Frequent_Pattern_Mining/The_FP-Growth_Algorithm) in the first pass, the algorithm counts occurrence of items (attribute-value pairs) in the dataset, and stores them to 'header table'. In the second pass, it builds the FP-tree structure by inserting instances. Items in each instance have to be sorted by descending order of their frequency in the dataset, so that the tree can be processed quickly. Items in each instance that do not meet minimum coverage threshold are discarded. If many instances share most frequent items, FP-tree provides high compression close to tree root.
+
+Recursive processing of this compressed version of main dataset grows large item sets directly, instead of generating candidate items and testing them against the entire database. Growth starts from the bottom of the header table (having longest branches), by finding all instances matching given condition. New tree is created, with counts projected from the original tree corresponding to the set of instances that are conditional on the attribute, with each node getting sum of its children counts. Recursive growth ends when no individual items conditional on the attribute meet minimum support threshold, and processing continues on the remaining header items of the original FP-tree.
+
+Once the recursive process has completed, all large item sets with minimum 
+coverage have been found, and association rule creation begins.
+
+
+### Benefits of the FP-tree Structure
+
+Benefits of the FP-tree Structure
+* Completeness: never breaks a long pattern of any transaction
+preserves complete information for frequent pattern mining  
+* Compactness reduce irrelevant information—infrequent items are gone
+frequency descending ordering: more frequent items are more likely to be shared never be larger than the original database (if not count node-links and counts)  
+
+
+# Rule Generation
+
+Another step needs to be done after to generate rules from frequent itemsets found in a database. Given a frequent itemset L, find all non-empty subsets $f \subset L$ such that $f \rightarrow L – f$ satisfies the minimum confidence requirement.
+
+If $|L| = k$, then there are $2^k – 2$ candidate association rules (ignoring $L \rightarrow \emptyset$ and $\emptyset \rightarrow L$).
+
+How to efficiently generate rules from frequent itemsets?  
+
+In general, confidence does not have an anti-monotone property,
+
+$$ 
+c(ABC \rightarrow D)  \quad can  \quad be  \quad larger \quad  or  \quad smaller  \quad than \quad c(AB \rightarrow D)
+$$
+
+However the confidence of rules generated from the same itemset has an anti-monotone property. e.g., L = {A,B,C,D}:
+
+$$
+c(ABC \rightarrow D) \ge c(AB \rightarrow CD) \ge c(A \rightarrow BCD)
+$$
+
+![Rule Generation for Apriori Algorithm](http://nikbearbrown.com/YouTube/MachineLearning/M04/Rule_Generation_for_Apriori_Algorithm.png)
+*Rule Generation for Apriori Algorithm*
+
+## Factors Affecting Complexity
+
+* Choice of minimum support threshold
+ lowering support threshold results in more frequent itemsets
+ this may increase number of candidates and max length of frequent itemsets
+* Dimensionality (number of items) of the data set
+ more space is needed to store support count of each item
+ if number of frequent items also increases, both computation and I/O costs may also increase
+* Size of database
+ since Apriori makes multiple passes, run time of algorithm may increase with number of transactions
+* Average transaction width
+ transaction width increases with denser data sets - This may increase max length of frequent itemsets and traversals of hash tree (number of subsets in a transaction increases with its width)
+
+
+#  Association Rules in R  
+
+The [arules package documentation](http://lyle.smu.edu/IDA/arules/) describes a number of packages for association rules in R.
+
+* [arules](https://cran.r-project.org/web/packages/arules/index.html): A package for mining association rules and frequent itemsets.
+    + [Introduction to arules](https://cran.r-project.org/web/packages/arules/vignettes/arules.pdf)  
+* [arulesViz](https://cran.r-project.org/web/packages/arulesViz/index.html): A package for visualizing association rules based on package arules.
+    + [Introduction to arulesViz](https://cran.r-project.org/web/packages/arulesViz/vignettes/arulesViz.pdf)  
+* [arulesClassify](http://r-forge.r-project.org/projects/arules): Add-on to implement associative classifiers (alpha).
+*  [arulesNBMiner](https://cran.r-project.org/web/packages/arulesNBMiner/index.html): Add-on for arules to mine NB-frequent itemsets and NB-precise rules.
+* [arulesSequences](https://cran.r-project.org/web/packages/arulesSequences/index.html): Add-on for arules to handle and mine frequent sequences.
+
+
+## Apriori algorithm  
+
+Training a model on the data using apriori.
+
+
+```{r}
+# default settings result in zero rules learned
+adult.d<- apriori(Adult)
+adult.d
+# set better support and confidence levels to learn more rules
+adult<- apriori(Adult, parameter = list(support = 0.01, confidence = 0.99, minlen = 4))
+adult
+```
+
+Evaluating model performance.
+
+```{r}
+# summary of adult association rules
+summary(adult)
+# look at the first rule
+adult[1]
+inspect(adult[1])
+# look at the first three rules
+inspect(adult[1:3])
+```
+
+Improving model performance.
+
+```{r}
+# sorting adult rules by lift
+inspect(sort(adult, by = "lift")[1:3])
+# finding subsets of rules for 'relationship=Own-child'
+Rules.sorted <- subset(adult, items %in% "relationship=Own-child")
+inspect(Rules.sorted)
+# converting the rule set to a data frame
+Rulesdataframe<- as(Rules.sorted, "data.frame")
+str(Rulesdataframe)
+```
+
+Pruning redundant rules.
+
+```{r}
+subset.matrix <- is.subset(Rules.sorted, Rules.sorted)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
+ redundant <- colSums(subset.matrix, na.rm=T) >= 1
+ which(redundant)
+# remove redundant rules
+rules.pruned <- Rules.sorted[!redundant]
+inspect(rules.pruned)
+```
+
+Visualizing Association Rules
+
+
+```{r}
+plot(Rules.sorted)
+plot(Rules.sorted, method="graph", control=list(type="items"))
+plot(Rules.sorted, method="paracoord", control=list(reorder=TRUE))
+```
+
+# Assingment
+
+* Choose a transaction dataset from the [Frequent Itemset Mining Dataset Repository](http://fimi.ua.ac.be/data/) or another transaction dataset of your choice from the Web.
+* Generate a a set of 50 or so (non-redundant) rules:
+    * Which rules make sense to you? Highlight the five best and five worst of your rule set.
+    * How did you choose the level of support, confidence?
+    * What is the lift and conviction of your best and worst rules?
+    * Visualize your 50 association rules. Where to the best and worst end up in your plot.
+    * Does the model make sense?
+Write up your report as an .Rmd file.
+ 
+# Resources
+
+* Agrawal, R.; Imieliński, T.; Swami, A. (1993). ["Mining association rules between sets of items in large databases"](http://dl.acm.org/citation.cfm?doid=170035.170072). Proceedings of the 1993 ACM SIGMOD international conference on Management of data - SIGMOD '93. p. 207.  
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

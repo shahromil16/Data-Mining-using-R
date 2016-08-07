@@ -1,0 +1,130 @@
+---
+title: "M4_L4_RomilShah"
+author: "Romil Shah"
+date: "June 19, 2016"
+output: word_document
+---
+
+## Read Data and additional packages
+
+```{r}
+require(arules)
+require(arulesViz)
+require(Matrix)
+
+urlData <- 'http://fimi.ua.ac.be/data/retail.dat'
+retail <- read.transactions(url(urlData))
+summary(retail)
+
+# First few transactions
+inspect(retail[1:20])
+
+# Frequency of the data
+itemFrequency(retail[1:100,1:20])
+
+# Plotting the frequency
+itemFrequencyPlot(retail,support=0.01)
+itemFrequencyPlot(retail,topN=25)
+
+# First 1000 transaction visualization
+image(retail[1:1000])
+image(sample(retail,1000))
+```
+
+Generation of 50 or so non-redundant rules
+
+```{r}
+rules1 <- apriori(retail)
+rules1
+```
+This gives set of 0 rules
+
+```{r}
+rules2 <- apriori(retail,parameter=list(support=0.01,confidence=0.52,minlen=2))
+rules2
+summary(rules2)
+```
+This gives 107 rules
+
+```{r}
+# Rules to dataframe conversion
+inspect(rules2)
+rulesDF <- as(rules2,"data.frame")
+str(rulesDF)
+
+# Removing redundant rules
+subset.matrix <- is.subset(rules2,rules2)
+subset.matrix[lower.tri(subset.matrix,diag = T)] <- NA
+redundant <- colSums(subset.matrix,na.rm = T) >= 1
+which(redundant)
+rulesPruned <- rules2[!redundant]
+rulesPruned
+inspect(rulesPruned)
+```
+Exactly 50 rules are obtained
+
+```{r}
+# Visualize association rules
+plot(rules2)
+plot(rules2,method = "graph", control=list(type="items"))
+plot(rules2, method="paracoord", control=list(reorder=TRUE))
+
+# Conviction
+conviction <- interestMeasure(rulesPruned, "conviction", transactions=retail)
+rulesConv<-as(rulesPruned, "data.frame")
+rulesConv<-data.frame(rulesConv, conviction)
+rulesConv
+```
+
+
+## Answers:
+
+####A(1)
+The rules that have high level of confidence and high support makes proper sense to me.  
+The top 5 Best rules based on high confidence and high support are:  
+1. {48} => {39}  
+2. {41} => {39}  
+3. {38} => {39}  
+4. {41} => {48}  
+5. {32} => {39}  
+
+The top 5 Worst rules based on low confidence and low support are:  
+1. {533} => {39}  
+2. {79} => {48}  
+3. {12925} => {39}  
+4. {2238} => {48}  
+5. {270} => {48}  
+
+####A(2)
+Initially I used the default level of confidence and support but it yielded 0 results of rules. Thus I tried with a various permuation-conbination of 'support', 'confidence' and 'minlen'.
+Finally I was able to obtain about 107 rules with the following values:  
+support = 0.01
+confidence = 0.52
+minlen = 2  
+The reason I obtained 107 rules is that most of the rules will be pruned as they might be redundant and hence I would have 50 rules in the end.
+
+####A(3)
+Lift and conviction for top 5 Best rules:  
+No.....Rules............Lift..........Conviction  
+ 
+1. {48} => {39} | 1.2032726 | 1.378900  
+2. {41} => {39} | 1.3287082 | 1.799689  
+3. {38} => {39} | 1.1539977 | 1.262904  
+4. {41} => {48} | 1.2625621 | 1.316413  
+5. {32} => {39} | 0.9698434 | 0.960831  
+  
+Lift and conviction for top 5 Worst rules:  
+No.....Rules.............Lift.........Conviction  
+
+1. {533} => {39}  | 1.0787173 | 1.119082  
+2. {79} => {48}   | 1.1678039 | 1.181495  
+3. {12925} => {39}| 1.1123985 | 1.179163  
+4. {2238} => {48} | 1.1651388 | 1.178099  
+5. {270} => {48}  | 1.1547854 | 1.165090  
+
+####A(4)
+The best rules end up being in the centre of the visualization graph. Thus this proves that they are the best ones.
+The worst rules are on the outer end of the graph. Hence they do not contribute to the dataframe. It is clearly seen that the rules '48', '39', '41', '32' etc are quite close by. The rules '270', '2238', '12925' are far away from the centre and hence are the worst rules.
+
+####A(5)
+Yes absolutely. The model makes good sense as the rules guide which path is to be taken in order to maximize the outputs. In terms of supermarket, if customers buy X and Y together as well as Y and Z togehter, then the rules guide them in such a way that whomsoever buys X or Y would end up buying Y at the least. This is where the rules help in maximizing the transactions and understanding the relations between each data item with respect to the other.

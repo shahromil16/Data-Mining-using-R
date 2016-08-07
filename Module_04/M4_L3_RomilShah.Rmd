@@ -1,0 +1,63 @@
+---
+title: "M4_L3_RomilShah"
+author: "Romil Shah"
+date: "June 19, 2016"
+output: word_document
+---
+
+## Read Data and additional packages
+
+```{r}
+require(ggplot2)
+require(mclust)
+
+dataframe <- read.table("C:/Users/rams1/Desktop/DSCS6030/Module_04/ecoli.data")
+colnames(dataframe) <- c("SeqNames","mcg","gvh","lip","chg","aac","alm1","alm2","Class")
+ecoli <- dataframe[2:8]
+class = dataframe$Class
+table(class)
+head(ecoli)
+
+# cluster Pairs
+clPairs(ecoli,class)
+```
+
+## Expectation Maximization Clustering
+
+### Obtaining the EM Model
+```{r}
+mod1<-Mclust(ecoli)
+mod1
+summary(mod1)
+```
+
+### Plots for EM produces following plots
+```{r}
+# BIC
+plot(mod1,what="BIC")
+
+# Classification
+plot(mod1, what = "classification")
+
+# Uncertainty
+plot(mod1, what = "uncertainty")
+
+# Density
+plot(mod1, what = "density")
+
+
+# Only BIC for EM initialized by model based clustering
+BIC = mclustBIC(ecoli)
+summary(BIC)
+```
+
+
+## Answers:
+Answers to the questions:
+
+####A(1)
+The data consists of various relations between the clusters. The EM model was chosen such that the clustering by EM algorithm assigns the different clusters tothe data. As we have about 7 classes, it becomes easier to cluster the data such that the E step estimates the data of the Ecoli database and the M step will maximize the cluster allotment based on minimum error and maximum aposteriori.
+
+####A(2)
+EM clustering is very similar to the clustering by k-means or PAM or hierarchical. But the major difference is that the overlap of the gaussians can be possible in EM which is not possible in -means.
+Thus the clustering gaussians can overlap so that the data is ordered into proper clusters which is not possible in k-means.

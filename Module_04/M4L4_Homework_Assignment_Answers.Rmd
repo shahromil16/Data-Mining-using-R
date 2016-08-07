@@ -1,0 +1,163 @@
+---
+title: "M4L4_Homework_Assignment_Answers"
+author: "Victor Gomes"
+date: "March 22, 2016"
+output: word_document
+---
+
+This homework assignment focuses on Association Rules.
+
+## Additional packages needed
+ 
+To run the code in M4L4_Homework_Assignment_Answers.Rmd you may need additional packages.
+
+* If necessary install following packages.
+
+`install.packages("arules");`
+`install.packages("arulesViz");`
+
+```{r}
+require("arules")
+require("arulesViz")
+```
+
+Retail Data Set:
+
+```{r}
+data_url <- 'http://fimi.ua.ac.be/data/retail.dat'
+retail <- read.transactions(url(data_url))
+summary(retail)
+# look at the first five transactions
+inspect(retail[1:5])
+# Look at the frequency 
+itemFrequency(retail[1:100, 1:10])
+# plot the frequency 
+itemFrequencyPlot(retail,support=0.1)
+itemFrequencyPlot(retail,topN=20)
+```
+
+* Generate a set of 50 or so (non-redundant) rules.
+
+```{r}
+retail.rules<-apriori(retail)
+summary(retail.rules)
+```
+
+Improving model performance.
+
+```{r}
+retail.rules.2 <- apriori(retail, parameter = list(support = 0.01, confidence = 0.5, minlen = 1))
+retail.rules.2
+# converting the rule set to a data frame
+Rulesdataframe<- as(retail.rules.2, "data.frame")
+str(Rulesdataframe)
+```
+
+Pruning redundant rules.
+
+```{r}
+subset.matrix <- is.subset(retail.rules.2, retail.rules.2)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
+redundant <- colSums(subset.matrix, na.rm=T) >= 1
+which(redundant)
+# remove redundant rules
+rules.pruned <- retail.rules.2[!redundant]
+inspect(rules.pruned)
+```
+ 
+
+* Which rules make sense to you? Highlight the five best and five worst of your rule set. 
+
+{} => {39}
+{41}   => {48}
+{38}   => {48}
+{110}  => {38}
+{170}  => {38}
+
+The above rules look like the best since they have high support/confidence. 
+
+{270}  => {48}
+{2238} => {48
+{1327} => {48}
+{38}   => {48}
+{170}  => {48}
+
+The above rules look like the worst because of their low support and confidence. 
+
+* How did you choose the level of support and confidence? 
+
+Higher level of confidence and lower level of support is  preferable. So, we set support at 0.01 and confidence at 0.5.
+
+* What is the lift and conviction of your best and worst rules? 
+
+Lift of best rules -
+
+{} => {39}  - 1.000000
+
+{41}   => {48} - 1.262562
+
+{38}   => {48} - 1.065772
+
+{110}  => {38} - 5.513258
+
+{170}  => {38} - 5.528821
+
+Lift of worst rules -
+
+{270}  => {48} - 1.154785
+
+{2238} => {48 - 1.165139
+
+{1327} => {48} - 1.134050
+
+{38}   => {48} - 1.065772
+
+{170}  => {48} - 1.051249
+
+Conviction:
+
+```{r}
+conviction <- interestMeasure(rules.pruned, "conviction", transactions=retail)
+rules.conviction<-as(rules.pruned, "data.frame")
+rules.conviction<-data.frame(rules.conviction, conviction)
+rules.conviction
+```
+
+Best rules -
+
+{} => {39}  - 1.000000
+
+{41}   => {48} - 1.316413
+
+{38}   => {48} - 1.064068
+
+{110}  => {38} - 33.329520
+
+{170}  => {38} - 37.511499
+
+Worst Rules -
+
+{270}  => {48} - 1.165090
+
+{2238} => {48 - 1.178099
+
+{1327} => {48} - 1.139881
+
+{38}   => {48} - 1.064068
+
+{170}  => {48} - 1.049225
+
+
+* Visualize your 50 association rules. Where do the best and worst end up in your plot? 
+
+```{r}
+plot(retail.rules.2)
+plot(retail.rules.2, method="graph", control=list(type="items"))
+plot(retail.rules.2, method="paracoord", control=list(reorder=TRUE))
+```
+
+* Does the model make sense?
+
+The model makes sense. Each number represents one item in a supermarket and the rules we are valuable since the supermarket would benefit from using them in selling these items.
+
+

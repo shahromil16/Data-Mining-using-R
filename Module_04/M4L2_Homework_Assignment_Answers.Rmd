@@ -1,0 +1,170 @@
+---
+title: "M4L2_Homework_Assignment_Answers"
+author: "Victor Gomes"
+date: "March 22, 2016"
+output: word_document
+---
+
+This homework assignment focuses on Clustering.
+
+## Additional packages needed
+ 
+To run the code in M4L2_Homework_Assignment_Answers.Rmd you may need additional packages.
+
+* If necessary install following packages.
+
+`install.packages("ggplot2");`
+`install.packages("useful");`
+`install.packages("cluster"); `
+`install.packages("amap"); `
+`install.packages("energy");`
+
+```{r}
+require(ggplot2)
+require(useful)
+require(cluster)
+require(amap)
+require(energy)
+```
+
+
+```{r}
+data_url <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data'
+iris_data <-read.table(url(data_url), sep=",")
+colnames(iris_data)<-c("SepalLength","SepalWidth","PetalLength","PetalWidth","Class")
+iris <- iris_data[1:4]
+head(iris)
+```
+
+##Clustering
+
+###K-means clustering
+
+Determining number of clusters
+
+```{r}
+# Determining number of clusters 
+sos <- (nrow(iris)-1)*sum(apply(iris,2,var))
+for (i in 2:10) sos[i] <- sum(kmeans(iris, centers=i)$withinss)
+plot(1:10, sos, type="b", xlab="Number of Clusters", ylab="sum of squares")
+# Hartigans's rule  FitKMean (similarity)
+# require(useful)
+best<-FitKMeans(iris,max.clusters=10, seed=111) 
+PlotHartigan(best)
+```
+
+A k of 3?
+
+```{r}
+k<-3
+iris.3.clust<-kmeans(iris,k)
+iris.3.clust
+```
+
+
+* How did you choose a k for k-means?
+
+I chose k from the hartigan's rule FitKMean (similarity). 
+
+###PAM Clustering
+
+```{r}
+k<-3
+iris.pam.3.clust<- pam(iris,k, keep.diss = TRUE, keep.data = TRUE)
+iris.pam.3.clust
+```
+
+###Hierarchical Clustering
+
+Hierarchical clustering.
+```{r}
+iris.h.clust<- hclust(d=dist(iris))
+plot(iris.h.clust)
+```
+
+* Evaluate the model performance. How do the clustering approaches compare on the same data?
+
+```{r}
+# Evaluating model performance (for k-means)
+# look at the size of the clusters
+iris.3.clust$size
+
+# look at the cluster centers
+iris.3.clust$centers
+```
+
+The results of k-means and PAM clustering are similar. We can evaluate the two approaches further using confusion matrix and silhoutte plot.
+
+* Generate and plot confusion matrices for the k-means and PAM. What do they tell you?
+
+```{r}
+cm <-table(iris_data$Class,iris.3.clust$cluster)
+cm
+plot(cm)
+cm2<-table(iris_data$Class,iris.pam.3.clust$cluster)
+cm2
+plot(cm2)
+```
+
+From the confusion matrix, we understand that both the approaches has segregated 'Iris-setosa' class completely but have made errors in the other two classes. 
+
+* Generate centroid plots against the 1st two discriminant functions for k-means and PAM. What do they tell you? 
+
+```{r}
+# Centroid plot for k-means
+clusplot(iris_data, iris.3.clust$cluster, color=TRUE, shade=TRUE, labels=2, lines=0)
+# Centroid plot for PAM
+clusplot(iris_data, iris.pam.3.clust$cluster, color=TRUE, shade=TRUE, labels=2, lines=0)
+```
+
+The centroid plots of both the clustering techniques show that two of the components overlap slightly with each other while the other component is completely segregated.
+
+* Generate silhouette plots for PAM. What do they tell you?
+
+```{r}
+plot(iris.pam.3.clust, which.plots = 2)
+```
+
+The long lines in the silhouette plot for cluster 1 shows greater within cluster similarity. 
+
+* For the hierarchical clustering use all linkage methods (Single Link, Complete Link, Average Link, Centroid and Minimum energy clustering) and generate dendograms. How do they compare on the same data? 
+
+```{r}
+iris.h.clust.si<- hclust(dist(iris), method = "single")
+iris.h.clust.co<- hclust(dist(iris), method = "complete")
+iris.h.clust.av<- hclust(dist(iris), method = "average")
+iris.h.clust.ce<- hclust(dist(iris), method = "centroid")
+plot(iris.h.clust.si, labels = FALSE)
+plot(iris.h.clust.co, labels = FALSE)
+plot(iris.h.clust.av, labels = FALSE)
+plot(iris.h.clust.ce, labels = FALSE)
+plot(energy.hclust(dist(iris)),labels = FALSE)
+```
+
+* For the hierarchical clustering use both agglomerative and divisive clustering with a linkage method of your choice and generate dendograms. How do they compare on the same data? 
+
+####Agglomerative clustering:
+
+```{r}
+distance<- dist(iris,method = "euclidean") 
+iris_hclust<-hclust(distance, method="single")
+plot(iris_hclust,labels=FALSE)
+```
+
+####Divisive clustering:
+
+```{r}
+dc<-diana(iris, diss=inherits(iris, "dist"), metric="euclidean")
+plot(dc)
+```
+
+* For the hierarchical clustering use centroid clustering and squared Euclidean distance and generate dendograms. How do they compare on the same data?
+
+```{r}
+### centroid clustering and squared Euclidean distance
+h_c<- hclust(dist(iris)^2, "cen")
+plot(h_c,labels=FALSE)
+```
+
+Centroid clustering and squared Euclidean distance results are similar to minimum energy clustering.
+
