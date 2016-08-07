@@ -1,0 +1,115 @@
+---
+title: "M3_Homework_Assignment_Answers"
+author: "Shivani"
+date: "October 8, 2015"
+output: word_document
+---
+
+This homework assignment focuses on Principal Components Analysis (PCA).
+
+## Additional packages needed
+ 
+To run the code in M02_Homework_Assignment_Answers.Rmd you may need additional packages.
+
+* If necessary install following package.
+
+`install.packages("ggplot2");
+`install.packages("devtools");
+`library(devtools);
+`install_github("ggbiplot", "vqv");
+
+
+
+
+```{r}
+require(ggplot2)
+require(ggbiplot)
+```
+
+
+Run Principal Components Analysis on the BLS data and answer the following questions (You can use any PCA function you wish, i.e. princomp(), prcomp(), principal() or by hand.):
+
+To Run Principal Component Analysis, we need only the numerical data and no NA values. So we have to clean the data and consider only a subset of data for PCA.
+
+```{r}
+labor<-read.csv("http://nikbearbrown.com/YouTube/MachineLearning/M03/BLS/2014.annual.small.csv")
+str(labor)
+```
+
+
+Erica Mason's answer :
+
+Looking at the structure of the BLS data, we see that there are 38 variables, 6 of which are Factor variables and the remaining 32 are numerical or integer variables. To use Principal Component Analysis, we need numerical data only so we must subset the data frame. Furthermore we see that size_code and year have the same value for every row, so these columns have also been removed. Any column with the word code in the title are categorical variables represented with integers so these have also been removed (non continuous data). 
+Looking at the correlation matrix, I see that the following pairs are almost perfectly correlated: (annual_avg_weekly_wage and avg_annual_pay), (lq_annual_avg_wkly_wage and lq_avg_annual_pay), (oty_avg_annual_pay_chg and oty_annual_avg_weekly_wage_chg), and (oty_avg_annual_pay_pct_chg and oty_annyual_avg_wkly_wage_pct_chg). The weekly values are a factor of the annual values and therefore they are extraneous to the data set and I removed them from the subset that will undergo principal component analysis.
+
+This leaves us with 24 "features" of the data set, so the prcomp function will return 24 principal components of the labor data set, which together, represent the entirity of the labor data. 
+
+```{r}
+keep<-c("annual_avg_estabs","annual_avg_emplvl","total_annual_wages","taxable_annual_wages","annual_contributions", "avg_annual_pay", "lq_annual_avg_estabs","lq_annual_avg_emplvl","lq_total_annual_wages","lq_taxable_annual_wages","lq_annual_contributions","lq_avg_annual_pay","oty_annual_avg_estabs_chg","oty_annual_avg_estabs_pct_chg","oty_annual_avg_emplvl_chg","oty_annual_avg_emplvl_pct_chg","oty_total_annual_wages_chg","oty_total_annual_wages_pct_chg","oty_taxable_annual_wages_chg","oty_taxable_annual_wages_pct_chg","oty_annual_contributions_chg","oty_annual_contributions_pct_chg","oty_avg_annual_pay_chg","oty_avg_annual_pay_pct_chg")
+labor<-labor[keep]
+```
+
+I have run PCA using two functions for your reference. 
+
+###PCA using princomp()
+
+```{r}
+labor.fit.A <- princomp(formula = ~., labor, cor=TRUE, na.action = na.exclude)
+labor.fit.A
+print(labor.fit.A)
+summary(labor.fit.A)
+names(labor.fit.A)
+```
+
+###PCA using prcomp()
+
+```{r}
+labor.fit.B<-prcomp(labor, retx=TRUE, center=TRUE, scale.=TRUE)
+summary(labor.fit.B)
+formatC(labor.fit.B$rotation, format='fg', digits=4)
+```
+
+###Screeplot
+
+```{r}
+screeplot(labor.fit.A)
+```
+
+###Biplot
+
+```{r}
+library(ggbiplot)
+ggbiplot(labor.fit.A, labels = rownames(labor))
+```
+
+###Questions:
+
+Saroja Somasundaram's answer (modified):
+
+For labor.fit.A :
+
+* What proportion of the total variation in the data is explained by each of the principal components?
+
+The proportion of variance of each component can be infered from the summary. 
+
+* What happens when you plot a screeplot?
+
+Screeplots plots variances against the number of the principal component. My screeplot showed the variances of first ten PCs.
+
+* Based on the variation explained for each of these components,      which, if any, components would you use? Why?
+
+Based on the proportion of the variance and cumulative proportion I would use the first ten PCs because they capture about 90% of the variance in the data. If we would like more we could use first 13 PCs which capture about 95% variance in the data. Hence it would be a good enough representation of the data.
+
+* Is there evidence of clustering in the data by creating biplots of   the each of the components plotted against one another? Why or why   not?
+
+There is signifigant evidence of clustering by plotting component 1 up against component 2. I beleive the reason to be that a lot of these fields contain similar data that we would expect to be correlated with each other. For example, there are more than 8 fields that contain wage information in them and we would expect these fields to sync up with each other in similar manners.
+
+* Do any of the biplots reveal any interesting structure? 
+
+The biplot for PC1 versus PC2 shows us that the data are tightly clustered. The cluster is more near the origin, showing that there are maximum values at or near zero.
+
+* How many pcs are required to explain 75% of the variance in the     data?
+
+Six PCs are required to explain 75% of the variance in the data as the cumulative proportion is about 76.62%
+
+

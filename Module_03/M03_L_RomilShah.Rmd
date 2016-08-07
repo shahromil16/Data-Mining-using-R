@@ -1,0 +1,73 @@
+---
+title: "Module_03 Solution"
+author: "Romil Shah"
+date: "June 5, 2016"
+output: word_document
+---
+
+###Load BLS data and needed additional packages
+
+```{r}
+require(ggplot2)
+require(reshape2)
+require(psych)
+memory.limit(10000)
+```
+
+```{r}
+BLS<-read.csv("C:/Users/rams1/Desktop/DSCS6030/Module_03/2014.annual.singlefile.csv")
+head(BLS)
+```
+There are only some variables out of 38 variables that actually have an effect on the data. There are some which have no data at all. There are others whose numeric value has no meaning to the data. All such columns can be removed which would be useless. Hence after removing the unimportant data, I kept about 20 variables features that would be useful for the principal component analysis.
+I am using two methods: princomp() and principal().
+Also the 'NA' values are removed before parsing the data.
+The included columns are: ("annual_avg_estabs","annual_avg_emplvl","total_annual_wages","annual_avg_wkly_wage","avg_annual_pay","lq_annual_avg_estabs","lq_annual_avg_emplvl","lq_total_annual_wages","lq_annual_avg_wkly_wage","lq_avg_annual_pay","oty_annual_avg_estabs_chg","oty_annual_avg_estabs_pct_chg","oty_annual_avg_emplvl_chg","oty_annual_avg_emplvl_pct_chg","oty_total_annual_wages_chg","oty_total_annual_wages_pct_chg","oty_annual_avg_wkly_wage_chg","oty_annual_avg_wkly_wage_pct_chg","oty_avg_annual_pay_chg","oty_avg_annual_pay_pct_chg")
+
+```{r}
+keep <- c("annual_avg_estabs","annual_avg_emplvl","total_annual_wages","annual_avg_wkly_wage","avg_annual_pay","lq_annual_avg_estabs","lq_annual_avg_emplvl","lq_total_annual_wages","lq_annual_avg_wkly_wage","lq_avg_annual_pay","oty_annual_avg_estabs_chg","oty_annual_avg_estabs_pct_chg","oty_annual_avg_emplvl_chg","oty_annual_avg_emplvl_pct_chg","oty_total_annual_wages_chg","oty_total_annual_wages_pct_chg","oty_annual_avg_wkly_wage_chg","oty_annual_avg_wkly_wage_pct_chg","oty_avg_annual_pay_chg","oty_avg_annual_pay_pct_chg")
+
+BLS_reduced = BLS[keep]
+head(BLS_reduced)
+```
+
+##PCA using princomp() and principal()
+```{r}
+bls.fit.A <- princomp(formula = ~., data=BLS_reduced, cor=TRUE, na.action=na.exclude)
+bls.fit.A
+
+library(psych)
+bls.fit.B <- principal(BLS_reduced, nfactors=10, rotate="varimax")
+bls.fit.B 
+```
+
+##screeplot()
+```{r}
+screeplot(x=bls.fit.A)
+```
+
+##biplot()
+```{r}
+biplot(bls.fit.A)
+```
+
+##Answers:
+[A1]
+The proportion of the total variation in the data is explained by the summary:
+```{r}
+summary(bls.fit.A)
+```
+
+[A2]
+The screeplot() shows the variances for each of the components. The component 1 has the highest variance which decreases with each component. Only 10 components are visible out of 20.
+
+[A3]
+The first 8 components capture about 90% of the variances. Thus I would use the first 8 components. If more variances are to be captured say about 99% then the first 11 components are to be used.  
+
+[A4]
+Yes. There seems to be good amount of clustering as the data seems to be correlated. There is income information in most of the columns. Thus they are related to each other in the data. Hence the data would be similar for most of the columns.
+
+A[5]
+The biplot for component 1 vs component 2 shows that the data is highly clustered. The cluster is nearer to the origin, showing that more values are either 0 or very close to zero.
+
+A[6]
+5 pcs are required to explain 75% variance of the data. The total variance given by the 6 pcs is about 80.8785%

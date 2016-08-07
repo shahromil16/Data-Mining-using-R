@@ -1,0 +1,371 @@
+---
+title: "Principal Components Analysis & Singular Value Decomposition"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson we apply principal component analysis (PCA) that uses eigenvalues and eigenvectors in an orthogonal transformation to convert a set of observations of possibly correlated variables into a set of values of linearly uncorrelated variables called principal components. We also  perform Eigen decomposition of various data matrices into a canonical form, whereby the matrices is represented in terms of their eigenvalues and eigenvectors which allow us to rank and use the most important features in a data set which may make many calculations much quicker and easier.
+
+# Additional packages needed
+ 
+To run the code in M03_Lesson_02.Rmd you may need additional packages.
+
+* If necessary install the following packages.
+
+* `install.packages("ggplot2");`   
+* `install.packages("reshape2"); `  
+* `install.packages("psych");`    
+
+
+```{r}
+require(ggplot2)
+require(reshape2)
+require(psych)
+```
+
+
+# Data
+
+We will be the diamonds dataset as well as creating some random data. 
+
+
+```{r}
+# Load data
+data(diamonds)
+head(diamonds)
+set.seed(555)
+trails<-333
+m<-33.0
+s<-3.0
+r_normal <-data.frame(A=rnorm(n=trails,mean=m,sd=sqrt(s)),
+                      B=rnorm(n=trails,mean=m,sd=sqrt(s^2)),
+                      C=rnorm(n=trails,mean=m,sd=sqrt(s^3)),
+                      D=rnorm(n=trails,mean=m,sd=sqrt(s^4)))  
+head(r_normal)
+```
+
+  
+
+```{r,}
+require(reshape2)
+rnd <- melt(data=r_normal)
+head(rnd)
+ggplot(rnd, aes(x=value)) + geom_density(aes(group=variable,color=variable)) + labs(title="Normal Distributions", y="sigma^2(X)", x=" x n=333")
+
+```
+
+# Principal Components Analysis in R
+
+### Properties of Principal Components
+
+* The principal components are eigenvectors
+* Maximizes variance in order of the components
+* They are orthogonal (and form a basis)
+* If use all of the principal components  we can get lossless reconstruction 
+* N diminsions to M diminsions (each diminsion has an eigenvalue 
+the order (highest eigenvalues have highest  variance)
+i.e. can "throw away" the lowest eigenvalues.
+if eigenvalue has 0 value can throw it away without cost.
+* We can readjust to origin 0
+* There are very fast algorithms to compute PCA  
+
+
+```{r,}
+head(diamonds)
+keep <- c("carat", "depth", "table", "price", "x", "y", "z")
+diamonds<- diamonds[keep]
+head(diamonds)
+```
+## princomp()  
+
+*princomp()* performs a principal components analysis on the given numeric data matrix and returns the results as an object of class princomp.
+
+### Arguments  
+
+* formula	- a formula with no response variable, referring only to numeric variables.  
+* data	- an optional data frame (or similar: see model.frame) containing the variables in the formula formula. By default the variables are taken from environment(formula).  
+* subset - an optional vector used to select rows (observations) of the data matrix x.  
+* na.action	- a function which indicates what should happen when the data contain NAs. The default is set by the na.action setting of options, and is na.fail if that is unset. The ‘factory-fresh’ default is na.omit. 
+* x	- a numeric matrix or data frame which provides the data for the principal components analysis.
+* cor	- a logical value indicating whether the calculation should use the correlation matrix or the covariance matrix. (The correlation matrix can only be used if there are no constant variables.)
+* scores - a logical value indicating whether the score on each principal component should be calculated.
+* covmat - a covariance matrix, or a covariance list as returned by cov.wt (and cov.mve or cov.mcd from package MASS). If supplied, this is used rather than the covariance matrix of x.
+  
+### Value  
+
+*princomp()* returns a list with class "princomp" containing the following components:  
+
+* sdev - the standard deviations of the principal components.  
+* loadings - the matrix of variable loadings (i.e., a matrix whose columns contain the eigenvectors). This is of class "loadings": see loadings for its print method.  
+* center - the means that were subtracted.  
+* scale - the scalings applied to each variable.  
+* n.obs - the number of observations.  
+* scores - if scores = TRUE, the scores of the supplied data on the principal components. These are non-null only if x was supplied, and if covmat was also supplied if it was a covariance list. For the formula method, napredict() is applied to handle the treatment of values omitted by the na.action.  
+* call - the matched call.  
+
+
+
+```{r,}
+diamonds.fit.A <- princomp(diamonds, cor = TRUE)
+diamonds.fit.A
+```
+
+We can also use a formula.
+
+
+```{r,}
+diamonds.fit.A <-  princomp(formula = ~., data = diamonds, cor = TRUE, na.action=na.exclude)
+diamonds.fit.A
+```
+
+
+## prcomp()
+
+Performs a principal components analysis on the given data matrix and returns the results as an object of class prcomp.  
+
+### Arguments  
+
+* formula	
+a formula with no response variable, referring only to numeric variables.
+* data - an optional data frame (or similar: see model.frame) containing the variables in the formula formula. By default the variables are taken from environment(formula).  
+* subset - an optional vector used to select rows (observations) of the data matrix x.  
+* na.action - a function which indicates what should happen when the data contain NAs. The default is set by the na.action setting of options, and is na.fail if that is unset. The ‘factory-fresh’ default is na.omit.    
+* retx - a logical value indicating whether the rotated variables should be returned.  
+* center - a logical value indicating whether the variables should be shifted to be zero centered. Alternately, a vector of length equal the number of columns of x can be supplied. The value is passed to scale.  
+* scale -  a logical value indicating whether the variables should be scaled to have unit variance before the analysis takes place. The default is FALSE for consistency with S, but in general scaling is advisable. Alternatively, a vector of length equal the number of columns of x can be supplied. The value is passed to scale.  
+* tol - a value indicating the magnitude below which components should be omitted. (Components are omitted if their standard deviations are less than or equal to tol times the standard deviation of the first component.) With the default null setting, no components are omitted. Other settings for tol could be tol = 0 or tol = sqrt(.Machine$double.eps), which would omit essentially constant components.  
+
+
+### Value  
+
+*prcomp()* returns a list with class "prcomp" containing the following components:  
+
+* sdev - the standard deviations of the principal components (i.e., the square roots of the eigenvalues of the covariance/correlation matrix, though the calculation is actually done with the singular values of the data matrix).
+* rotation - the matrix of variable loadings (i.e., a matrix whose columns contain the eigenvectors). The function princomp returns this in the element loadings.
+* x - if retx is true the value of the rotated data (the centred (and scaled if requested) data multiplied by the rotation matrix) is returned. Hence, cov(x) is the diagonal matrix diag(sdev^2). For the formula method, napredict() is applied to handle the treatment of values omitted by the na.action.
+* center, scale - the centering and scaling used, or FALSE.
+
+```{r,}
+diamonds.fit.B <- prcomp(diamonds, retx=TRUE, center=TRUE, scale.=TRUE)
+diamonds.fit.B
+```
+
+##  principal() library(psych)
+
+### Arguments
+
+* r - a correlation matrix. If a raw data matrix is used, the correlations will be found using pairwise deletions for missing values.  
+* nfactors - Number of components to extract  
+* residuals - FALSE, do not show residuals, TRUE, report residuals  
+* rotate - "none", "varimax", "quatimax", "promax", "oblimin", "simplimax", and "cluster" are possible rotations/transformations of the solution.  
+* n.obs - Number of observations used to find the correlation matrix if using a correlation matrix. Used for finding the goodness of fit statistics.  
+* covar - If false, find the correlation matrix from the raw data or convert to a correlation matrix if given a square matrix as input.  
+* scores - If TRUE, find component scores  
+* missing - if scores are TRUE, and missing=TRUE, then impute missing values using either the median or the mean  
+* impute - "median" or "mean" values are used to replace missing values  
+* oblique.scores - If TRUE (default), then the component scores are based upon the structure matrix. If FALSE, upon the pattern matrix.  
+* method - Which way of finding component scores should be used. The default is "regression"  
+
+
+### Value
+
+* values - Eigen Values of all components – useful for a scree plot  
+* rotation - which rotation was requested?  
+* n.obs - number of observations specified or found  
+* communality - Communality estimates for each item. These are merely the sum of squared factor loadings for that item.  
+* loadings - A standard loading matrix of class “loadings"  
+* fit - Fit of the model to the correlation matrix  
+* fit.off - how well are the off diagonal elements reproduced?  
+* residual - Residual matrix – if requested  
+* dof - Degrees of Freedom for this model. This is the number of observed correlations minus the number of independent parameters (number of items * number of factors - nf*(nf-1)/2. That is, dof = niI * (ni-1)/2 - ni * nf + nf*(nf-1)/2.  
+* objective - value of the function that is minimized by maximum likelihood procedures. This is reported for comparison purposes and as a way to estimate chi square goodness of fit. The objective function is 
+log(trace ((FF'+U2)^{-1} R) - log(|(FF'+U2)^-1 R|) - n.items. Because components do not minimize the off diagonal, this fit will be not as good as for factor analysis.  
+* STATISTIC - If the number of observations is specified or found, this is a chi square based upon the objective function, f. Using the formula from factanal: 
+chi^2 = (n.obs - 1 - (2 * p + 5)/6 - (2 * factors)/3)) * f  
+* PVAL - If n.obs > 0, then what is the probability of observing a chisquare this large or larger?  
+* phi - If oblique rotations (using oblimin from the GPArotation package) are requested, what is the interfactor correlation.  
+* scores - If scores=TRUE, then estimates of the factor scores are reported
+* weights - The beta weights to find the principal components from the data  
+* R2 - The multiple R square between the factors and factor score estimates, if they were to be found. (From Grice, 2001) For components, these are of course 1.0.  
+* valid - The correlations of the component score estimates with the components, if they were to be found and unit weights were used. (So called course coding).  
+
+```{r,}
+library(psych)
+diamonds.fit.C <- principal(diamonds, nfactors=5, rotate="varimax")
+diamonds.fit.C 
+```
+
+## PCA By-Hand in R
+
+We can also calculate the PCA by hand in R
+
+```{r,}
+# PCA by hand in R:
+cm <- cor(diamonds)
+# calculate a correlation matrix
+eig <- eigen(cm)
+# eigen find s the eigenvalues and eigenvectors of correlation matrix
+names(eig)
+# The eigenvalues are stored in eig$values
+# The eigenvectors (loadings) are stored in eig$vectors
+sv.ByHand <- sqrt(eig$values)
+# Calculating the singular values from eigenvalues
+loadings.ByHand <- eig$vectors
+rownames(loadings.ByHand) <- colnames(diamonds)
+# saving as loadings, and setting rownames
+# X <- apply(diamonds, MARGIN=2, FUN=standardize)
+# Transforming the data to zero mean and unit variance
+# scores.ByHand <- X %*% loadings.ByHand
+# calculating scores from eigenanalysis
+```
+  
+
+# How Many Components Should We Extract?
+
+How many components should ee extract from a fit the diamonds.fit.A, diamonds.fit.B, diamonds.fit.C 
+
+```{r,}
+print(diamonds.fit.A)
+summary(diamonds.fit.A)
+names(diamonds.fit.A)
+print(diamonds.fit.B)
+summary(diamonds.fit.B)
+names(diamonds.fit.B)
+print(diamonds.fit.C)
+summary(diamonds.fit.C)
+names(diamonds.fit.C)
+```
+  
+
+The default plot method for classes "princomp" and "prcomp" is a  screeplot.
+
+
+```{r,}
+plot(diamonds.fit.A)
+plot(diamonds.fit.B)
+plot(diamonds.fit.C)
+```
+### Screeplots   
+
+Screeplots plots variances against the number of the principal component.  
+  
+
+```{r,}
+screeplot(diamonds.fit.A)
+screeplot(diamonds.fit.B)
+# screeplot(diamonds.fit.C)
+```
+  
+
+If the first principal component is large we can scale the principal component's by the first principal component.
+  
+
+```{r,}
+barplot(diamonds.fit.A$sdev/diamonds.fit.A$sdev[1]) 
+```
+
+### Biplots  
+
+Evidence of clustering in the data can be visualized by looking scores of the first principal component against the scores of the second, scores of the second principal component against the scores of the third, etc. These are called biplots of the principal component's. The biplot extends the idea of a scatterplot of two variables with additional aesthetics to visualize many variables.  See [Gabriel, K. R. (1971). The biplot graphical display of matrices with applications to principal component analysis. *Biometrika*, 58, 453–467.](http://www.ggebiplot.com/Gabriel1971.pdf)
+
+The default R Biplot is the projection of your data on the first two principal components (where the variances are the highest). Samples are displayed as points while variables are displayed as vectors. 
+
+It is common for the "species" scores in a PCA to be drawn as biplot arrows that point in the direction of increasing values for that variable. A biplot uses points to represent the scores of the observations on the principal components, and it uses vectors to represent the coefficients of the variables on the principal components.
+
+Interpreting Points:  
+
+Points that are close together correspond to observations that have similar scores on the components displayed in the plot. 
+
+Interpreting Vectors:  
+
+A vector points in the direction which is most like the variable represented by the vector. This is the direction which has the highest squared multiple correlation with the principal components. The length of the vector is proportional to the squared multiple correlation between the fitted values for the variable and the variable itself.
+
+```{r,}
+names(diamonds)
+biplot(diamonds.fit.A)
+# biplot(diamonds.fit.B)
+# biplot(diamonds.fit.C)
+```
+
+# Singular Value Decomposition in R 
+
+[singular value decomposition (SVD)](https://en.wikipedia.org/wiki/Singular_value_decomposition) is a factorization of a real or complex matrix. A  a matrix decomposition or matrix factorization is a factorization of a matrix into a product of matrices.
+
+If $\mathbf{M}$ is a m × n matrix whose entries come from $\mathbb{R}$, then the SVD  a factorization, called a singular value decomposition of  $\mathbf{M}$ , of the form $\mathbf{M=UDV}^\top$ gives the factors in columns of $\mathbf{V}$.
+
+Note that,  
+$\mathbf{D}$ is a m × n diagonal matrix with non-negative real numbers on the diagonal, and  
+$\mathbf{U}$  is an m × m, and $\mathbf{V}$ is an n × n, unitary matrix over $\mathbb{R}$.
+
+The diagonal entries, $\sigma_{i}$, of $D$ are known as the singular values of $\mathbf{M}$. The singular values are usually listed in descending order.
+
+Note that [Eigendecomposition](https://en.wikipedia.org/wiki/Eigendecomposition_of_a_matrix) is a form of matrix factorization.   
+
+$A=VDV^{-1}$, where D is a diagonal matrix formed from the eigenvalues of A, and the columns of V are the corresponding eigenvectors of A.
+
+*svd()* computes the singular-value decomposition of a rectangular matrix.
+
+### Arguments
+
+*  x - a numeric or complex matrix whose SVD decomposition is to be computed. Logical matrices are coerced to numeric.
+*  nu - the number of left singular vectors to be computed. This must between 0 and n = nrow(x).
+*  nv - the number of right singular vectors to be computed. This must be between 0 and p = ncol(x).  
+
+### Value 
+
+The returned value is a list with components
+
+*  d - a vector containing the singular values of x, of length min(n, p).
+*  u - a matrix whose columns contain the left singular vectors of x, present if nu > 0. Dimension c(n, nu).
+*  v - a matrix whose columns contain the right singular vectors of x, present if nv > 0. Dimension c(p, nv).
+
+
+```{r,}
+diamonds.svd <- svd(diamonds)
+names(diamonds.svd)
+diamonds.svd$d
+A <- diag(diamonds.svd$d)
+A
+u<-as.matrix(diamonds.svd$u[,1:2])
+v<-as.matrix(diamonds.svd$v[,1:2])
+d<-as.matrix(diag(diamonds.svd$d)[1:2, 1:2])
+s2<-u%*%d%*%t(v)
+head(s2)
+diamonds.svd$d
+```
+  
+
+# Assignment
+
+* Download the compressed data from the U.S. [Bureau of Labor Statistics](https://en.wikipedia.org/wiki/Bureau_of_Labor_Statistics
+) [http://www.bls.gov/](http://www.bls.gov/) @ http://www.bls.gov/cew/data/files/2014/csv/2014_annual_singlefile.zip, and extract the .csv file.  
+* Run Principal Components Analysis on the BLS data and answer the following questions. (You can use any PCA function you wish, i.e. princomp(), prcomp(),  principal() or by hand.)    
+* Questions:  
+(a) What proportion of the total variation in the data is explained by each of the principal  components?  
+(b) Plot a screeplot.  
+(c) Based on the variation explained for each of these components, which, if any, components would you use?  
+(d) Is there evidence of clustering in the data by creating biplots of the each of the components plotted against one another?  
+(e) Do any of the biplots reveal any interesting structure?
+(f) How many pcs are required to explain 75% of the variance in the data? 
+
+Write up your report as an .Rmd file.
+ 
+# Resources
+
+[Computing and visualizing PCA in R] (http://www.r-bloggers.com/computing-and-visualizing-pca-in-r/)  
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```
