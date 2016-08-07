@@ -1,0 +1,473 @@
+---
+title: "Decision trees"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In the this lesson we study the theory and practice of Decision Trees. We show how to use them in R with labeled data.
+
+
+# Additional packages needed
+ 
+To run the code in M06_Lesson_02.Rmd you may need additional packages.
+
+* If necessary install the followings packages.
+
+`install.packages("ggplot2");`            
+`install.packages("C50");`     
+`install.packages("gmodels");`     
+`install.packages("rpart");`     
+`install.packages("rattle");`     
+`install.packages("RColorBrewer");`     
+`install.packages("tree");`     
+`install.packages("party");`     
+
+```{r}
+require("ggplot2");
+require("C50");
+require("gmodels");
+require("rpart");
+require("RColorBrewer");
+require("tree");
+require("party");
+```
+
+
+# Data
+
+We will be using the [UCI Machine Learning Repository: Mushroom Data Set](http://archive.ics.uci.edu/ml/datasets/Mushroom). This data is mushrooms described in terms of physical characteristics; along with the classification (label): poisonous or edible drawn from The Audubon Society Field Guide to North American Mushrooms (1981). G. H. Lincoff (Pres.), New York: Alfred A. Knopf   
+
+Feel free to tweet questions to [@NikBearBrown](https://twitter.com/NikBearBrown)  
+
+```{r data}
+# Load our data
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M06/mushrooms.csv'
+mushrooms <- read.csv(url(data_url))
+head(mushrooms)
+```
+
+
+# Decision trees
+
+A [decision tree](https://en.wikipedia.org/wiki/Decision_tree) is a decision support tool that uses a tree-like graph or model of decisions and their outcomes.  The decision tree can be linearized into decision rules, where the outcome is the contents of the leaf node, and the conditions along the path form a conjunction in the if clause. In general, the rules have the form:
+
+$if \quad condition1 \quad and \quad condition2 \quad and \quad condition3 \quad then \quad outcome$
+
+Each node in the tree is a decisions/tests. Each path from the tree root to a leaf corresponds to a conjunction of attribute decisions/tests. The tree itself corresponds to a disjunction of these conjunctions.
+
+![decision tree play or n](http://nikbearbrown.com/YouTube/MachineLearning/M06/Decision_Trees_A.png)  
+*Decision Tree*
+
+
+## Growing a Decision Tree
+
+Top-down: Which attribute shoud ne the root?
+
+We construct a tree from the top down starting with the question:  which attribute should be tested at the root of the tree? That is, which attribute best splits/sperates the labled training data.
+
+Then build subtrees recursively, asking the same question on the remaining attributes.
+
+
+### Information gain
+
+Heuristic: choose the attribute that produces the “purest” nodes. That is, the most homogeneous splits. A popular impurity criterion is information gain. Information gain increases with the average purity of the subsets. The idea is to choose the attribute that gives greatest information gain as the root of the tree.
+
+
+### Entropy
+
+The notion of using entropy as a measure of change in system state and dynamics comes both from [statistical physics](https://en.wikipedia.org/wiki/Entropy) and from [information theory](https://en.wikipedia.org/wiki/Entropy_(information_theory)). In statistical physics, entropy is a measure of disorder and uncertainty in a random variable; the higher the entropy, the greater the disorder. [(Gray,1990), (Behara et al., 1973), (Yeung,2002) ] In the statistical physics context, the term usually refers to [Gibbs entropy](https://en.wikipedia.org/wiki/Entropy_(statistical_thermodynamics)#Gibbs_Entropy_Formula), which measures the macroscopic state of the system as defined by a distribution of atoms and molecules in a thermodynamic system. Gibbs entropy is a measure of the disorder in the arrangements of its particles. As the position of a particle becomes less predictable, the entropy increases. For a classical system (i.e., a collection of classical particles) with a discrete set of microstates, if $E_i$ is the energy of microstate $i$, and $p_i$ is the probability that it occurs during the system's fluctuations, then the entropy of the system is
+
+$$
+S = -k_\text{B}\,\sum_i p_i \ln \,p_i
+$$
+
+The quantity $k_\text{B}$ is a physical constant known as [Boltzmann's constant](https://en.wikipedia.org/wiki/Boltzmann_constant), which, like the entropy, has units of heat capacity. The logarithm is dimensionless.
+
+In information theory, entropy is also a measure of the uncertainty in a random variable. [(Cover & Thomas, 1991),(Emmert-Streib & Dehmer, 2009)] In this context, however, the term usually refers to the [Shannon entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory)), which quantifies the expected value of the information contained in a message (or the expected value of the information of the probability distribution). The concept was introduced by [Claude E. Shannon](https://en.wikipedia.org/wiki/Claude_Shannon) in his 1948 paper "A Mathematical Theory of Communication." [(Shannon, 1948)] Shannon entropy establishes the limits to possible data compression and channel capacity.  That is, the entropy gives a lower bound for the efficiency of an encoding scheme (in other words, a lower bound on the possible compression of a data stream). Typically this is expressed in the number of ‘bits’ or ‘nats’ that are required to encode a given message. Given the probability of each of n events, the information required to predict an event is the distribution’s entropy. Low entropy means the system is very ordered, that is, very predictable. High entropy means the system is mixed, that is, very un predictable; a lot of information is needed for prediction. 
+
+
+The Shannon entropy can explicitly be written as
+
+$$
+E(X) = \sum_{i} {\mathrm{P}(x_i)\,\mathrm{I}(x_i)} = -\sum_{i} {\mathrm{P}(x_i) \log_b \mathrm{P}(x_i)},
+$$
+
+where b is the base of the logarithm used. Common values of b are 2, Euler's number e, and 10, and the unit of entropy is shannon for b = 2, nat for b = e, and hartley for b = 10.When b = 2, the units of entropy are also commonly referred to as bits.
+
+
+The Shannon entropy is by far the most common information-theoretic measure there are others. Other information-theoretic measures include: plog,Rényi entropy, Hartley entropy, collision entropy, min-entropy, Kullback-Leibler divergence and the information dimension.
+
+### Plog
+
+Plog (which we pronounce ‘plog, ’ for positive log) (Equation 3) (Gray, 1990) is simply the negative log of the frequency. As the value of plog increases, the frequency decreases. 
+
+$$
+E(X) = -\sum\ln{p_i}
+$$
+
+
+
+freq  | (base 2)  
+----  | -------------  
+0.5   |  1  
+0.25  |  2  
+1/16  |  5  
+
+  
+
+Big plog means low frequency.
+
+### Rényi entropies  
+
+The [Rényi entropies](https://en.wikipedia.org/wiki/R%C3%A9nyi_entropy) generalize the Shannon entropy, the Hartley entropy, the min-entropy, and the collision entropy. As such, these entropies as an ensemble are often called the Rényi entropies (or the Rényi entropy, even though this usually refers to a class of entropies). The difference between these entropies is in the respective value for each of an order parameter called alpha: the values of alpha are greater than or equal to zero but cannot equal one. The Renyi entropy ordering is related to the underlying probability distributions and allows more probable events to be weighted more heavily. As alpha approaches zero, the Rényi entropy increasingly weighs all possible events more equally, regardless of their probabilities. A higher alpha (a) weighs more probable events more heavily. The base used to calculate entropies is usually base 2 or Euler's number base e. If the base of the logarithm is 2, then the uncertainty is measured in bits. If it is the natural logarithm, then the unit is nats. 
+
+### Rényi entropies	 
+
+The Rényi entropy of order $\alpha$, where $\alpha \geq 0$  and $\alpha \neq 1$ , is defined as
+
+$$
+H_\alpha(X) = \frac{1}{1-\alpha}\log\Bigg(\sum_{i=1}^n p_i^\alpha\Bigg)
+$$
+
+Here, X is a discrete random variable with possible outcomes 1,2,...,n and corresponding probabilities $p_i \doteq \Pr(X=i) for i=1,\dots,n,$ and the logarithm is base 2. 
+
+
+#### Hartley entropy
+
+The Hartley entropy (Gray, 1990) is the Rényi entropy with an alpha of zero. 
+
+the probabilities are nonzero, $H_0$ is the logarithm of the cardinality of X, sometimes called the Hartley entropy of X:  
+
+$$
+H_0 (X) = \log n = \log |X|
+$$
+
+#### Shannon entropy 
+
+The Shannon entropy (Gray, 1990) is the Rényi entropy with an alpha of one. The Shannon entropy is a simple estimate of the expected value of the information contained in a message. It assumes independence and identically distributed random variables, which is a simplification when applied to word counts. In this sense it is analogous to naïve Bayes, in that it is very commonly used and thought to work well in spite of violating some assumptions upon which it is based.
+
+The limiting value of $H_\alpha as \alpha \rightarrow 1$ is the Shannon entropy:
+
+$$
+H_1 (X) = - \sum_{i=1}^n p_i \log p_i. 
+$$
+
+#### collision entropy
+
+The collision entropy (Gray, 1990) is the Rényi entropy with an alpha of two and is sometimes just called "Rényi entropy," refers to the case $\alpha = 2$,
+
+$$
+H_2 (X) = - \log \sum_{i=1}^n p_i^2 = - \log P(X = Y)
+$$
+
+where $X$ and $Y$ are independent and identically distributed. 
+
+#### min-entropy
+
+The min-entropy (Gray, 1990) is the Rényi entropy as the limit of alpha approaches infinity. The name min-entropy stems from the fact that it is the smallest entropy measure in the Rényi family of entropies. In the limit as $\alpha \rightarrow \infty$, the Rényi entropy $H_\alpha converges to the min-entropy H_\infty$:
+
+$$
+H_\infty(X) \doteq \min_i (-\log p_i) = -(\max_i \log p_i) = -\log \max_i p_i\,.
+$$
+
+Equivalently, the min-entropy $H_\infty(X)$ is the largest real number b such that all events occur with probability at most $2^{-b}$.
+
+
+#### Kullback-Leibler divergence
+
+[Kullback-Leibler divergence](https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence) (Gray, 1990) is a non-symmetric measure of the difference between two probability distributions. The Kullback-Leibler measure goes by several names: relative entropy, discrimination information, Kullback-Leibler (KL) number, directed divergence, informational divergence, and cross entropy. Kullback-Leibler divergence is a measure of the difference between the observed entropy and its excepted entropy. We calculate the KL divergence by weighting one distribution (like an observed frequency distribution) by the log of probabilities of some other distribution D2. For discrete probability distributions P and Q, the Kullback–Leibler divergence of Q from P is defined to be
+
+$$
+D_{\mathrm{KL}}(P\|Q) = \sum_i P(i) \, \ln\frac{P(i)}{Q(i)}
+$$
+
+In words, it is the expectation of the logarithmic difference between the probabilities P and Q, where the expectation is taken using the probabilities P.
+
+
+#### Mutual Information
+
+[Mutual information](https://en.wikipedia.org/wiki/Mutual_information) (Gray, 1990) quantifies the mutual dependence of the two random variables. It is a measure of the “stickiness” between two items. It measures how much knowing one of these variables reduces uncertainty about the other. We can use mutual information to quantify the association between two tags. Mutual information (Equation 10) is given by:
+
+the mutual information of two discrete random variables X and Y can be defined as:
+
+$$
+ I(X;Y) = \sum_{y \in Y} \sum_{x \in X} 
+                 p(x,y) \log{ \left(\frac{p(x,y)}{p(x)\,p(y)}
+                              \right) }, \,\!
+$$                              
+                              
+where $p(x,y)$ is the joint probability distribution function of $X$ and $Y$, and $p(x)$ and $p(y)$ are the marginal probability distribution functions of $X$ and $Y$ respectively. In the case of continuous random variables, the summation is replaced by a definite double integral:
+
+$$
+ I(X;Y) = \int_Y \int_X 
+                 p(x,y) \log{ \left(\frac{p(x,y)}{p(x)\,p(y)}
+                              \right) } \; dx \,dy,
+$$
+ 
+where $p(x,y)$ is now the joint probability density function of $X$ and $Y$, and $p(x$) and $p(y)$ are the marginal probability density functions of $X$ and $Y$ respectively.
+
+
+### Computing Information Gain
+
+To calculate information gain, we can calculate the information difference, $-p_1 \log p_1 - p_2 \log p_2$. Generalizing this to n events, we get:
+
+$$
+entropy(p_1, p_2, ... p_n) = -p_1 \log p_1 - p_2 \log p_2 ...  - p_n \log p_n 
+$$
+
+which is just the Shannon entropy
+
+$$
+H_1 (X) = - \sum_{i=1}^n p_i \log p_i. 
+$$
+
+For example, if entropy = $-1.0 \log (1.0) - 0.0 \log (0.0) = 0$ then this provides no information. If entropy = $-0.5 \log (0.5) - 0.5 \log (0.5) = 1.0$ then this provides one “bit” of information.  
+
+
+For example, let's calculate the information gain for the Outlook variable in the table below.
+
+![decision tree play or n](http://nikbearbrown.com/YouTube/MachineLearning/M06/Decision_Trees_A.png)
+
+For Outlook = Sunny are there are 5 Sunny rows of which  2 are "yes" and 3 are "no" and then InfoGain[2,3]= $-2/5 \log (2/5) - 3/5 \log (3/5) = 0.97  \quad bits$.   
+
+For Outlook = Overcast are there are 4 Overcast rows of which  0 are "yes" and 4 are "no" and then InfoGain[0,4]= $-0 \log (0) - 1 \log (1) = 0.0  \quad bits$.  
+
+For Outlook = Rainy are there are 5 Rainy rows of which  3 are "yes" and 2 are "no" and then InfoGain[3,2]= $- 3/5 \log (3/5) -2/5 \log (2/5)= 0.97  \quad bits$.   
+
+So the expected information gain for the for attribute Outlook would be,
+
+$$
+ InfoGain([2,3],[0,4][3,2])= \frac{5}{14} \times 0.97 + \frac{4}{14} \times 0.0 + \frac{5}{14} \times 0.97 = 0.69 \quad bits
+$$
+
+## ID3 algorithm
+
+This idea of iteratively finding the attribute with the most information gain to find a root in decision tree learning is called the  [ID3 (Iterative Dichotomiser 3)](https://en.wikipedia.org/wiki/ID3_algorithm) algorithm. The invented by [Ross Quinlan](https://en.wikipedia.org/wiki/Ross_Quinlan). It is a simple algorithm once one understands the concept of entropy and information gain.  
+
+1.  Calculate the entropy of every attribute using the data set S, using the Shannon entropy.
+2. Split the set S into subsets using the attribute for which entropy is minimum (or, equivalently, information gain is maximum)  
+3. Make the decision tree (or sub-tree) root node that attribute.  
+4. Recur on subsets using remaining attributes.  
+
+
+## C4.5 algorithm
+
+[C4.5](https://en.wikipedia.org/wiki/C4.5_algorithm) is an extension of Quinlan's earlier ID3 algorithm. The splitting criterion is based on statistical confidence estimates. This technique has the advantage that it allows all of the available labeled data to be used for training. To generate this confidence one calculates the error rate over $n$ labled training instances. The observed error rate $e$ is analaogous to the observed fraction of heads in $n$  tosses of a biased coin (i.e. the probability of heads may not be 0.5). One wishes to estimate the true error rate, $p$ from the observed error rate $e$.   
+
+The confidence interval, is calculated as follows, if one chooses a level of confidence $z$ then 
+
+$$
+p = e + z \times \sqrt{e \times \frac{1-e}{n}}
+$$  
+
+Paired values for z and confidence levels (z,confidence) are in the following lists: (0.67 z, 50% confidence), (1.0 z, 68% confidence) , (1.64 z, 90% confidence) and (1.96 z, 95% confidence).
+
+
+# Decision Trees in R 
+
+
+```{r}
+#####  Decision Trees  -------------------
+
+#### Step 1: Decision Trees -------------------
+
+## Understanding Decision Trees ----
+# calculate entropy of a two-class segment
+
+
+curve(-x * log2(x) - (1 - x) * log2(1 - x),
+      col="red", xlab = "x", ylab = "Entropy", lwd=4)
+
+## Example: Identifying Mushroom Type: Either 'poisonous' or 'edible' ----
+
+##Step 2: Exploring and preparing the data ----
+
+
+str(mushrooms)
+
+# look at the class variable
+table(mushrooms$type)
+
+# create a random sample for training and test data
+
+set.seed(12345)
+mush_rand <- mushrooms[order(runif(8124)), ]
+
+# compare the Mushrooms(In original order) and mush_rand( random order) data frames
+
+summary(mushrooms$habitat)
+summary(mush_rand$habitat)
+
+head(mushrooms$habitat)
+head(mush_rand$habitat)
+
+# split the data frames
+
+mushrooms_train <- mush_rand[1:8000,-17 ]
+mushrooms_test  <- mush_rand[8000:8124, ]
+
+# check the proportion of class variable
+
+prop.table(table(mushrooms_train$type))
+prop.table(table(mushrooms_test$type))
+
+
+## Step 3: Training a model on the data ----
+
+
+model <- C5.0(mushrooms_train[-1], mushrooms_train$type)
+
+# display simple facts about the tree
+model
+
+# display detailed information about the tree
+summary(model)
+
+
+## Step 4: Evaluating model performance ----
+# create a factor vector of predictions(model) on test data
+
+Mushroom_type_pred <- predict(model, mushrooms_test)
+
+# cross tabulation of predicted versus actual classes
+
+
+CrossTable(mushrooms_test$type, Mushroom_type_pred,
+           prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE,
+           dnn = c('actual type', 'predicted type'))
+
+
+
+formula<-type  ~ cap_shape + cap_surface +	cap_color+	bruises	+
+          odor + gill_attachment	+ gill_spacing	+ gill_size	+ gill_color+	stalk_shape+	stalk_root +	
+          stalk_surface_above_ring +stalk_surface_below_ring + stalk_color_above_ring	+
+          stalk_color_below_ring +	veil_color+ring_number+ring_type+ spore_print_color+population+
+           habitat
+
+fit = rpart(formula, method="class", data=mushrooms_train)
+
+printcp(fit) # display the results
+plotcp(fit) # visualize cross-validation results
+summary(fit) # detailed summary of splits
+
+
+###- Regression Tree Example
+
+# grow tree 
+fit <- rpart(formula, method="anova", data=mushrooms_train)
+
+printcp(fit) # display the results 
+plotcp(fit) # visualize cross-validation results 
+summary(fit) # detailed summary 
+
+# create additional plots 
+par(mfrow=c(1,2)) # two plots on one page 
+rsq.rpart(fit) # visualize cross-validation results    
+
+# plot tree 
+plot(fit, uniform=TRUE, 
+     main="Regression Tree for 'type' ")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+
+
+
+
+### ----------------  plot tree
+
+plot(fit, uniform=T, main="Classification Tree for Mushrooms Types")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+
+
+
+##----------------- TREE package
+
+
+tr = tree(formula, data=mushrooms_train)
+summary(tr)
+plot(tr); text(tr)
+
+
+
+##-------------------Party package
+
+
+ct = ctree(formula, data = mushrooms_train)
+plot(ct, main="Conditional Inference Tree")
+
+
+# Estimated class probabilities
+tr.pred = predict(ct, newdata=mushrooms_train, type="prob")
+
+#Table of prediction errors
+table(predict(ct), mushrooms_train$type)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+# Assingment
+
+
+* Go to the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/) and find a dataset for supervised classification. Every student MUST use a different dataset so you MUST get approved for which you can going to use. This can be the same dataset you used for the unsupervised clustering as long as the data has some labeled data.  
+
+* Generate a Decision Tree with your data. You canuse any method/package you wish. Answer the following questions:
+    * Does the size of the data set make a difference?
+    * Do the rules make sense? If so why did the algorithm generate good rules? If not, why not?   
+    * Does scaling, normalization or leaving the data unscaled make a difference?
+    
+
+# References
+
+* Behara, E. b. M., Krickeberg, K., & Wolfowitz, J. (1973). "Probability and information theory II" Springer-Verlag.
+
+* Yeung, R. W. 2002. "A first course in information theory Kluwer Academic/Plenum Publishers.
+
+* Cover, T. M., & Thomas, J. A. (1991). "Elements of Information Theory"" Wiley.
+
+* Deng,H.; Runger, G.; Tuv, E. (2011). "Bias of importance measures for multi-valued attributes and solutions."" Proceedings of the 21st International Conference on Artificial Neural Networks (ICANN).
+
+* Emmert-Streib, F., & Dehmer, M.  (2009). "Information Theory and Statistical Learning."" Springer-Verlag.
+
+* Gray, R. M. (1990). Entropy and Information Theory: Springer-Verlag.
+
+* Quinlan, J. R. (1987). "Simplifying decision trees". International Journal of Man-Machine Studies 27 (3): 221. [doi:10.1016/S0020-7373(87)80053-6](http://www.sciencedirect.com/science/article/pii/S0020737387800536).
+
+
+* Shannon, C. E. (1948). "A Mathematical Theory of Communication."" Bell System Technical Journal, 27(3), 379-423.
+
+* Theil.  (1972). "Statistical Decomposition Analysis."" Studies in Mathematical and Managerial Economics, 14.
+ 
+# Resources   
+
+
+* [Decision Trees](http://www.rdatamining.com/examples/decision-tree)
+
+* [Quick-R: Tree-Based Models](http://www.statmethods.net/advstats/cart.html)
+
+* [A Brief Tour of the Trees and Forests](//www.r-bloggers.com/a-brief-tour-of-the-trees-and-forests/)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

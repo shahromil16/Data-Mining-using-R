@@ -1,0 +1,244 @@
+---
+title: "Linear Discriminant Analysis"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson we'll learn the theory behind using Linear Discriminant Analysis (LDA) as a supervised classification technique. We'll then use LDA to classify the UCI wine dataset in R.
+
+
+# Additional packages needed
+ 
+To run the code in M06_Lesson_04.Rmd you may need additional packages.
+
+* If necessary install the followings packages.
+
+`install.packages("ggplot2");`   
+`install.packages("MASS");`   
+`install.packages("car");` 
+
+```{r}
+require(ggplot2)
+require(MASS)
+require(car)
+```
+
+
+# Data
+
+We will be using the [UCI Machine Learning Repository: Wine Data Set](https://archive.ics.uci.edu/ml/datasets/Wine).  These data are the results of a chemical analysis of wines grown in the same region in Italy but derived from three different cultivars. The analysis determined the quantities of 13 constituents found in each of the three types of wines.  
+
+The attributes are:  
+1) Alcohol  
+2) Malic acid   
+3) Ash   
+4) Alcalinity of ash   
+5) Magnesium   
+6) Total phenols   
+7) Flavanoids   
+8) Nonflavanoid phenols   
+9) Proanthocyanins   
+10) Color intensity   
+11) Hue   
+12) OD280/OD315 of diluted wines   
+13) Proline   
+
+Feel free to tweet questions to [@NikBearBrown](https://twitter.com/NikBearBrown)  
+
+```{r data}
+# Load our data
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M06/wine.csv'
+wn <- read.csv(url(data_url))
+head(wn)
+```
+
+
+# Linear Discriminant Analysis
+
+[Linear Discriminant Analysis (LDA)](https://en.wikipedia.org/wiki/Linear_discriminant_analysis) is a generalization of Fisher's linear discriminant to find a linear combination of features that characterizes or separates two or more classes of objects or events. Discriminant analysis seeks to generate lines that are efficient for discrimination.
+
+LDA is also closely related to [principal component analysis (PCA)](https://en.wikipedia.org/wiki/Principal_component_analysis) and factor analysis in that they both look for linear combinations of variables which best explain the data. In the case of LDA, we are maximizing the linear compenent axes for class discrimination. In the case of PCA, we are finding basis that maximize the variance.
+
+LDA can also be used as a supervised technique by finding a discriminant projection that maximizing between-class distance and minimizing within-class distance.
+
+LDA classifies $n$ items $X = {x_1,...x_n}$ to one of $G$ groups based on measurements on $p$ predictors. Similar to linear regression except our line(s) act to seperate groups.
+
+![Linear Discriminants seperate groups](http://nikbearbrown.com/YouTube/MachineLearning/M04/Linear_Discriminant.png)  
+
+*Linear Discriminants seperate groups*
+
+## LDA for two classes
+
+Consider a set of observations $\vec{x}$ and a known class y
+
+LDA approaches the problem by assuming that the conditional probability density functions $p(\vec x|y=0)$ and $p(\vec x|y=1)$ are both normally distributed with mean and covariance parameters $\left(\vec \mu_0, \Sigma_0\right)$ and $\left(\vec \mu_1, \Sigma_1\right)$
+
+
+LDA instead makes the additional simplifying homoscedasticity assumption (i.e. that the class covariances are identical, so $(\Sigma_0 = \Sigma_1 = \Sigma)$ and that the covariances have full rank. 
+
+In this case, several terms cancel:
+
+$$
+ {\vec x}^T \Sigma_0^{-1} \vec x = {\vec x}^T \Sigma_1^{-1} \vec x
+{\vec x}^T {\Sigma_i}^{-1} \vec{\mu_i} = {\vec{\mu_i}}^T{\Sigma_i}^{-1} \vec x
+$$
+
+because $\Sigma_i$ is [Hermitian](https://en.wikipedia.org/wiki/Hermitian_matrix) (i.e. a square matrix with complex entries that is equal to its own conjugate transpose)
+and the above decision criterion becomes a threshold on the dot product
+ $\vec w \cdot \vec x > c$
+for some threshold constant c, where
+$\vec w = \Sigma^{-1} (\vec \mu_1 - \vec \mu_0)
+ c = \frac{1}{2}(T-{\vec{\mu_0}}^T \Sigma_0^{-1} {\vec{\mu_0}}+{\vec{\mu_1}}^T \Sigma_1^{-1} {\vec{\mu_1}})$
+ 
+This means that the criterion of an input  $\vec{x}$  being in a class y is purely a function of this linear combination of the known observations. That is the  $\vec{x}$ postion is classified by n-lines and its postion in n-dimensional space determines its class. 
+
+## Fisher's linear discriminant
+
+Suppose two classes of observations have means  $\vec \mu_0, \vec \mu_1$  and covariances $\Sigma_0,\Sigma_1$ . Then the linear combination of features  $\vec w \cdot \vec x $ will have means  $\vec{w} \cdot \vec{\mu_i}$  and variances $\vec{w}^T \Sigma_i \vec{w}$  for  i=0,1 . Fisher defined the separation between these two distributions to be the ratio of the variance between the classes to the variance within the classes:
+
+$$
+S=\frac{\sigma_{\text{between}}^2}{\sigma_{\text{within}}^2}= \frac{(\vec w \cdot \vec \mu_1 - \vec w \cdot \vec \mu_0)^2}{\vec w^T \Sigma_1 \vec w + \vec w^T \Sigma_0 \vec w} = \frac{(\vec w \cdot (\vec \mu_1 - \vec \mu_0))^2}{\vec w^T (\Sigma_0+\Sigma_1) \vec w} 
+$$
+
+This measure is, in some sense, a measure of the signal-to-noise ratio for the class labelling. It can be shown that the maximum separation occurs when $\vec w \propto (\Sigma_0+\Sigma_1)^{-1}(\vec \mu_1 - \vec \mu_0)$ 
+
+When the assumptions of LDA are satisfied, the above equation is equivalent to LDA.
+
+
+## Multiclass LDA
+
+
+In the case where there are more than two classes, the analysis used in the derivation of the Fisher discriminant can be extended to find a subspace which appears to contain all of the class variability. This generalization is due to CR. Rao.Suppose that each of C classes has a mean  $\mu_i$ and the same covariance  $\Sigma$. Then the scatter between class variability may be defined by the sample covariance of the class means $\Sigma_b = \frac{1}{C} \sum_{i=1}^C (\mu_i-\mu) (\mu_i-\mu)^T$ where  $\mu$ is the mean of the class means. The class separation in a direction  $\vec{w}$ in this case will be given by
+
+$$
+ S = \frac{\vec w^T \Sigma_b \vec w}{\vec w^T \Sigma \vec w} 
+$$ 
+ 
+This means that when  $\vec w$  is an eigenvector of  $\Sigma^{-1} \Sigma_b$ the separation will be equal to the corresponding eigenvalue.
+If  $\Sigma^{-1} \Sigma_b$  is diagonalizable, the variability between features will be contained in the subspace spanned by the eigenvectors corresponding to the C − 1 largest eigenvalues (since  $\Sigma_b$  is of rank C − 1 at most). These eigenvectors are primarily used in feature reduction, as in PCA. The eigenvectors corresponding to the smaller eigenvalues will tend to be very sensitive to the exact choice of training data, and it is often necessary to use regularization.
+
+# Linear Discriminant Analysis in R
+
+LDA function ... outcome must be categories
+
+
+
+
+```{r}
+head(wn)
+summary(wn)
+length(wn)
+```
+
+You can also embed plots, for example:
+
+
+```{r}
+names(wn)
+scatterplotMatrix(wn[2:6])
+pairs(wn[,2:14])
+qplot(wn$Alcohol,wn$Ash,data=wn)+geom_point(aes(colour = factor(wn$Cultivar),shape = factor(wn$Cultivar)))
+qplot(wn$Malic.acid,wn$Alcohol,data=wn)+geom_point(aes(colour = factor(wn$Cultivar),shape = factor(wn$Cultivar)))
+
+```
+
+You can also embed plots, for example:
+
+```{r}
+lsa.m1<-lda(Cultivar ~ Malic.acid + Alcohol, data=wn)
+lsa.m1
+```
+
+You can also embed plots, for example:
+
+```{r}
+wine<-wn[which(wn$Cultivar!=1),]
+head(wine)
+summary(wine)
+qplot(wine$Alcohol,wine$Ash,data=wine)+geom_point(aes(colour = factor(wine$Cultivar),shape = factor(wine$Cultivar)))
+
+```
+
+You can also embed plots, for example:
+
+
+
+```{r}
+lsa.m2<-lda(Cultivar ~ Alcohol + Ash, data=wine)
+lsa.m2
+```
+
+You can also embed plots, for example:
+
+
+```{r}
+qplot(wine$Malic.acid,wine$Alcohol,data=wine)+geom_point(aes(colour = factor(wine$Cultivar),shape = factor(wine$Cultivar)))
+lsa.m3<-lda(Cultivar ~ Malic.acid + Alcohol, data=wine)
+lsa.m3
+```
+
+You can also embed plots, for example:
+
+```{r}
+names(wine) # Alcohol (2) + Malic.acid(3) + Ash (4)
+lsa.m2.p<-predict(lsa.m2, newdata = wine[,c(2,4)])
+lsa.m2.p
+lsa.m2.p$class
+```
+
+You can also embed plots, for example:
+
+```{r}
+lsa.m3.p<-predict(lsa.m3, newdata = wine[,c(2,3)])
+lsa.m1.p<-predict(lsa.m1, newdata = wn[,c(2,3)])
+```
+
+You can also embed plots, for example:
+
+```{r}
+cm.m1<-table(lsa.m1.p$class,wn[,c(1)])
+cm.m1
+cm.m2<-table(lsa.m2.p$class,wine[,c(1)])
+cm.m2
+cm.m3<-table(lsa.m3.p$class,wine[,c(1)])
+cm.m3
+```
+
+
+# Assingment
+
+
+* Go to the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/) and find a dataset for supervised classification. Every student MUST use a different dataset so you MUST get approved for which you can going to use. This can be the same dataset you used for the unsupervised clustering as long as the data has some labeled data.  
+
+* Classify your data using Linear Discriminant Analysis (LDA). Answer the following questions:
+    * Does the number of predictor variables for LDA make a difference? Try for a range of models using differing numbers of predictor variables.
+    * What determines the number of linear discriminants in LDA.    
+    * Does scaling, normalization or leaving the data unscaled make a difference for LDA?
+    
+
+ 
+# Resources   
+
+
+* [Discriminant Function Analysis](http://blog.datacamp.com/machine-learning-in-r/)
+
+* [Computing and visualizing LDA in R](https://tgmstat.wordpress.com/2014/01/15/computing-and-visualizing-lda-in-r/)
+
+* [Computing and visualizing LDA in R](http://www.r-bloggers.com/computing-and-visualizing-lda-in-r/)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

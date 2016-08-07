@@ -1,0 +1,85 @@
+---
+title: "M6_L4_RomilShah"
+author: "Romil Shah"
+date: "July 11, 2016"
+output: word_document
+---
+
+## Read Data and additional packages
+
+```{r}
+require(ggplot2)
+require(MASS)
+require(car)
+
+#PIMA Indian Diabetes Database
+
+data_url <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/pima-indians-diabetes.data'
+dataframe <- read.csv(url(data_url))
+colnames(dataframe) <- c("Npreg","plasmaGluc","bloodPress","skinFold","insulin","bmi","diabetes","age","class")
+pima <- dataframe[1:8]
+head(pima)
+summary(pima)
+length(pima)
+names(pima)
+scatterplotMatrix(pima[2:6])
+pairs(pima[,2:8])
+
+qplot(pima$age,pima$bmi,data=pima)+geom_point(aes(colour=factor(pima$Npreg),shape=factor(pima$Npreg)))
+qplot(pima$insulin,pima$age,data=pima)+geom_point(aes(colour=factor(pima$Npreg),shape=factor(pima$Npreg)))
+
+lsa.m1<-lda(Npreg~insulin+age,data=pima)
+lsa.m1
+pimaID<-pima[which(pima$Npreg!=1),]
+head(pimaID)
+summary(pimaID)
+qplot(pimaID$age,pimaID$bmi,data=pimaID)+geom_point(aes(colour=factor(pimaID$Npreg),shape=factor(pimaID$Npreg)))
+
+lsa.m2<-lda(Npreg~age+bmi,data=pimaID)
+lsa.m2
+qplot(pimaID$insulin,pimaID$age,data=pimaID)+geom_point(aes(colour=factor(pimaID$Npreg),shape=factor(pimaID$Npreg)))
+
+lsa.m3<-lda(Npreg~insulin+age,data=pimaID)
+lsa.m3
+
+names(pimaID)
+
+lsa.m2.p<-predict(lsa.m2,newdata=pimaID[,c(8,5,6)])
+lsa.m2.p
+lsa.m2.p$class
+
+lsa.m3.p<-predict(lsa.m3,newdata=pimaID[,c(8,5)])
+lsa.m1.p<-predict(lsa.m1,newdata=pima[,c(8,5)])
+
+cm.m1<-table(lsa.m1.p$class,pima[,c(1)])
+cm.m1
+
+cm.m2<-table(lsa.m2.p$class,pimaID[,c(1)])
+cm.m2
+
+cm.m3<-table(lsa.m3.p$class,pimaID[,c(1)])
+cm.m3
+```
+
+
+## Answers:
+
+####A(1)
+As the number of predictor variables increase for LDA, the computing increases. Technically it needs NxN matrix for N predictor variables and taking the inverse of the matrix which gives a powerful model. But computing that is expensive thus using a common lower rank matrix is useful in faster computation but there is a tradeoff in variance as the variance would increase.
+In this case there certain variables which do not have much effect on the Npreg thus can be ignored and the ones important can be considered.
+
+####A(2)
+It is clearly seen that we get two lines and 2 linear discriminants that separate the three groups. This is valid for lsa.m1, lsa.m2 and lsa.m3. 
+The number of groups ideally decide the number of linear discriminants. Hence if we use more groups, we get more linear disciminants. 
+```{r}
+# 1 linear discriminant
+lsa.a2<-lda(Npreg~insulin,data=pimaID)
+lsa.a2
+
+# 2 linear discriminants
+lsa.a2_2<-lda(Npreg~insulin+age,data=pimaID)
+lsa.a2_2
+```
+
+####A(3)
+LDA contains a similar term to that of Mahaloanobis distance in order to find the nomalized euclidean distance. Thus by scaling or normalization, the discriminant axis of the matrix may change but its eigenvalue that shows the separation of the classes will stay the same exactly. The projection of the axis will be mrerely the version of the original one. Thus standardization, scaling or normalization is not required whilst doing LDA.

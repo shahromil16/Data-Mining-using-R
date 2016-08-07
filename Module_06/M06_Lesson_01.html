@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Nik Bear Brown" />
+
+
+<title>k-Nearest Neighbors</title>
+
+<xxxx src="x"></xxxx>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="x" rel="stylesheet" />
+<xxxx src="x"></xxxx>
+<xxxx src="x"></xxxx>
+<xxxx src="x"></xxxx>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link href="x" rel="stylesheet" type="text/css" />
+<xxxx src="x"></xxxx>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<xxxx type="xxxx/xxxxxxxxxx">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</xxxx>
+
+
+
+</head>
+
+<body>
+
+<style type="text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">k-Nearest Neighbors</h1>
+<h4 class="author"><em>Nik Bear Brown</em></h4>
+</div>
+
+
+<p>In this lesson we’ll learn the theory behind using k-nearest neighbors (kNN) as a supervised classification technique. We’ll then use kNN to classify the UCI wine dataset in R.</p>
+<div id="additional-packages-needed" class="section level1">
+<h1>Additional packages needed</h1>
+<p>To run the code in M06_Lesson_01.Rmd you may need additional packages.</p>
+<ul>
+<li>If necessary install the followings packages.</li>
+</ul>
+<p><code>install.packages(&quot;ggplot2&quot;);</code><br /><code>install.packages(&quot;class&quot;);</code></p>
+<pre class="r"><code>require(ggplot2)</code></pre>
+<pre><code>## Loading required package: ggplot2</code></pre>
+<pre class="r"><code>require(class)</code></pre>
+<pre><code>## Loading required package: class</code></pre>
+</div>
+<div id="data" class="section level1">
+<h1>Data</h1>
+<p>We will be using the <a href="https://archive.ics.uci.edu/ml/datasets/Wine">UCI Machine Learning Repository: Wine Data Set</a>. These data are the results of a chemical analysis of wines grown in the same region in Italy but derived from three different cultivars. The analysis determined the quantities of 13 constituents found in each of the three types of wines.</p>
+<p>The attributes are:<br />1) Alcohol<br />2) Malic acid<br />3) Ash<br />4) Alcalinity of ash<br />5) Magnesium<br />6) Total phenols<br />7) Flavanoids<br />8) Nonflavanoid phenols<br />9) Proanthocyanins<br />10) Color intensity<br />11) Hue<br />12) OD280/OD315 of diluted wines<br />13) Proline</p>
+<p>Feel free to tweet questions to <span class="citation">[@NikBearBrown]</span>(<a href="https://twitter.com/NikBearBrown" class="uri">https://twitter.com/NikBearBrown</a>)</p>
+<pre class="r"><code># Load our data
+data_url &lt;- 'http://nikbearbrown.com/YouTube/MachineLearning/M06/wine.csv'
+wn &lt;- read.csv(url.(data_url))
+head(wn)</code></pre>
+<pre><code>##   Cultivar Alcohol Malic.acid  Ash Alcalinity.ash Magnesium Total.phenols
+## 1        1   14.23       1.71 2.43           15.6       127          2.80
+## 2        1   13.20       1.78 2.14           11.2       100          2.65
+## 3        1   13.16       2.36 2.67           18.6       101          2.80
+## 4        1   14.37       1.95 2.50           16.8       113          3.85
+## 5        1   13.24       2.59 2.87           21.0       118          2.80
+## 6        1   14.20       1.76 2.45           15.2       112          3.27
+##   Flavanoids Nonflavanoid.phenols Proanthocyanins Color.intensity  Hue
+## 1       3.06                 0.28            2.29            5.64 1.04
+## 2       2.76                 0.26            1.28            4.38 1.05
+## 3       3.24                 0.30            2.81            5.68 1.03
+## 4       3.49                 0.24            2.18            7.80 0.86
+## 5       2.69                 0.39            1.82            4.32 1.04
+## 6       3.39                 0.34            1.97            6.75 1.05
+##   OD280.OD315 Proline
+## 1        3.92    1065
+## 2        3.40    1050
+## 3        3.17    1185
+## 4        3.45    1480
+## 5        2.93     735
+## 6        2.85    1450</code></pre>
+</div>
+<div id="k-nearest-neighbors-knn" class="section level1">
+<h1>k-Nearest Neighbors (kNN)</h1>
+<p>A simple supervised learning algorithm is <a href="https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm">k-Nearest Neighbors</a> algorithm (k-NN). KNN is a non-parametric method used for classification and regression.</p>
+<p>In both cases, the input consists of the k closest training examples in the feature space. The output depends on whether k-NN is used for classification or regression:</p>
+<p>In k-NN classification, the output is a class membership. An object is classified by a majority vote of its neighbors, with the object being assigned to the class most common among its k nearest neighbors (k is a positive integer, typically small). If k = 1, then the object is simply assigned to the class of that single nearest neighbor.</p>
+<p><img src="x" alt="k-nearest neighbor voting" /></p>
+<p><em>k-nearest neighbor voting</em></p>
+<p>In k-NN regression, the output is the property value for the object. This value is the average of the values of its k nearest neighbors.</p>
+<p>k-NN has the nice property that a labled subset of a data set could be used to label the whole data set. This is especially important in the analysis of “big-data.” Most big-data sets are only partially labled, as labeling often requires human annotation. While many are looking to unsupervised learning the ‘future’ of big-data, k-Nearest Neighbors is an instance of a supervised learning algorithm that can be used with big-data.</p>
+<p>The kNN classification problem is to find the k nearest data points in a data set to a given query data point. The point is then assigned to the group by a majority “vote.” For this reason, pick an odd k is prefered as the odd vote can break ties. This operation is also known as a kNN join, and can be defined as: given two data sets <span class="math">\(R\)</span> and <span class="math">\(S\)</span>, find the k nearest Neighbor from <span class="math">\(S\)</span> for every object in <span class="math">\(R\)</span>. <span class="math">\(S\)</span> refers to data that has already been classified, the training set. <span class="math">\(R\)</span> refers to data that is needs to be classified.</p>
+<p>The kNN algorithm can be fairly expensive, especially if one chooses a large k, as the k-nearest neighbors in <span class="math">\(S\)</span> for every point in <span class="math">\(R\)</span> needs to be calculated.</p>
+<div id="nearest-neighbor-search" class="section level2">
+<h2>Nearest neighbor search</h2>
+<p>A simple solution to finding nearest neighbors is to compute the distance from the each point in <span class="math">\(S\)</span> to every point in <span class="math">\(R\)</span> and keeping track of the “best so far”. This algorithm, sometimes referred to as the naive approach, has a running time of O(|R||S|).</p>
+<p>One can speed up the search to retrieve a “good guess” of the nearest neighbor. This is often done be limiting the search to a preset radius around a point culling out most of the points in <span class="math">\(S\)</span>. If k neighbors aren’t not found in the radius then the bound can be iteratively expanded until k are found. Altnernatively, the vote could be made using fewer points when k points aren’t found within a radius r.</p>
+</div>
+<div id="k-nearest-neighbors-is-nonparametric-lazy-learning" class="section level2">
+<h2>k-Nearest Neighbors is nonparametric “lazy learning”</h2>
+<p>K-Nearest Neighbors algorithm (kNN) is a nonparametric method for classifying objects based on the closest training examples in the feature space. kNN is nonparametric becuase it d oes not involve any estimation of parameters. This is sometimes called “lazy learning” or instance-based learning, as the mapping is approximated locally and all computation is deferred until classification.</p>
+</div>
+</div>
+<div id="knn-classification-and-distance-metrics" class="section level1">
+<h1>kNN Classification and Distance Metrics</h1>
+<p>Neighbors are defined by a distance or dissimilarity measure. In essence, the only thing that kNN requires is some measure of “closeness” of the points in <span class="math">\(S\)</span> and <span class="math">\(R\)</span>. Any distance metric or dissimilarity measure can be used. The most common being the Euclidean distance between the points <span class="math">\(x = (x_1, x_2,..., x_n)\)</span> and <span class="math">\(y = (y_1, y_2,..., y_n)\)</span> is given by the pythagorean formula:</p>
+<p><span class="math">\[
+\begin{align}\mathrm{d}(\mathbf{p},\mathbf{q}) = \mathrm{d}(\mathbf{q},\mathbf{p}) &amp; = \sqrt{(q_1-p_1)^2 + (q_2-p_2)^2 + \cdots + (q_n-p_n)^2} \\[8pt]
+&amp; = \sqrt{\sum_{i=1}^n (q_i-p_i)^2}.\end{align}
+\]</span></p>
+<p>Any measure of “closeness”, distance or dissimilarity measure can be used. For example,</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Chebyshev_distance">Chebyshev distance</a> - measures distance assuming only the most significant dimension is relevant.<br /></li>
+<li><a href="https://en.wikipedia.org/wiki/Hamming_distance">Hamming distance</a> - identifies the difference bit by bit of two strings<br /></li>
+<li><a href="https://en.wikipedia.org/wiki/Mahalanobis_distance">Mahalanobis distance</a> - normalizes based on a covariance matrix to make the distance metric scale-invariant.<br /></li>
+<li><a href="https://en.wikipedia.org/wiki/Taxicab_geometry">Manhattan distance</a> - measures distance following only axis-aligned directions.<br /></li>
+<li><a href="https://en.wikipedia.org/wiki/Minkowski_distance">Minkowski distance</a> - is a generalization that unifies Euclidean distance, Manhattan distance, and Chebyshev distance</li>
+</ul>
+<p>.. and many more.</p>
+</div>
+<div id="knn-algorithm" class="section level1">
+<h1>kNN Algorithm</h1>
+<div id="distance-function" class="section level2">
+<h2>Distance function</h2>
+<p>The distance function depends on your needs, but in general choosing features and distance metrics in which being “close” makes some sense in your domain are the distance metrics and features to choose. The type of variable, categorical, ordinal or nominal should be considered when choosing a sensible measure of closeness.</p>
+</div>
+<div id="k-nearest-neighbors" class="section level2">
+<h2>k nearest neighbors</h2>
+<p>Given an data point p, a training data set <span class="math">\(S\)</span>, and an integer k, the k nearest neighbors of p from <span class="math">\(S\)</span>, denoted as kNN(p, S), are a set of k objects from <span class="math">\(S\)</span> such that:</p>
+<p><span class="math">\[
+∀o ∊ kNN(q, S), ∀s ∊{S – kNN(q, S)}, |o, p| ≤ |s, p|
+\]</span></p>
+</div>
+<div id="knn-join" class="section level2">
+<h2>kNN join</h2>
+<p>Given two data sets R and S (where S is a training data set) and an integer k, the kNN join of R and S is defined as:</p>
+<p>kNNjoin(R, S) = {(r, s)|∀r ∊ R, ∀s ∊ kNN(r, S)}</p>
+<p>Basically, this combines each object r ∊ R with its k nearest neighbors from S.</p>
+</div>
+</div>
+<div id="steps-in-knn-classification" class="section level1">
+<h1>Steps in kNN Classification</h1>
+<p>The kNN algorithm can be summarized in the following simple steps:</p>
+<ul>
+<li><p>Determine k (the selection of k depends on your data and project requirements; there is no magic formula for k).</p></li>
+<li><p>Calculate the distances between the new input and all the training data (as with k, the selection of a distance function also depends on the type of data).</p></li>
+<li><p>Sort the distance and determine the k nearest neighbors based on the kth minimum distance.</p></li>
+<li><p>Gather the categories of those neighbors.</p></li>
+<li><p>Determine the category based on majority vote.</p></li>
+</ul>
+</div>
+<div id="k-nearest-neighbors-knn-in-r" class="section level1">
+<h1>k-Nearest Neighbors (kNN) in R</h1>
+<p>k-Nearest Neighbors (kNN) in R</p>
+<pre class="r"><code>head(wn)</code></pre>
+<pre><code>##   Cultivar Alcohol Malic.acid  Ash Alcalinity.ash Magnesium Total.phenols
+## 1        1   14.23       1.71 2.43           15.6       127          2.80
+## 2        1   13.20       1.78 2.14           11.2       100          2.65
+## 3        1   13.16       2.36 2.67           18.6       101          2.80
+## 4        1   14.37       1.95 2.50           16.8       113          3.85
+## 5        1   13.24       2.59 2.87           21.0       118          2.80
+## 6        1   14.20       1.76 2.45           15.2       112          3.27
+##   Flavanoids Nonflavanoid.phenols Proanthocyanins Color.intensity  Hue
+## 1       3.06                 0.28            2.29            5.64 1.04
+## 2       2.76                 0.26            1.28            4.38 1.05
+## 3       3.24                 0.30            2.81            5.68 1.03
+## 4       3.49                 0.24            2.18            7.80 0.86
+## 5       2.69                 0.39            1.82            4.32 1.04
+## 6       3.39                 0.34            1.97            6.75 1.05
+##   OD280.OD315 Proline
+## 1        3.92    1065
+## 2        3.40    1050
+## 3        3.17    1185
+## 4        3.45    1480
+## 5        2.93     735
+## 6        2.85    1450</code></pre>
+<pre class="r"><code>summary(wn)</code></pre>
+<pre><code>##     Cultivar        Alcohol        Malic.acid         Ash       
+##  Min.   :1.000   Min.   :11.03   Min.   :0.740   Min.   :1.360  
+##  1st Qu.:1.000   1st Qu.:12.36   1st Qu.:1.603   1st Qu.:2.210  
+##  Median :2.000   Median :13.05   Median :1.865   Median :2.360  
+##  Mean   :1.938   Mean   :13.00   Mean   :2.336   Mean   :2.367  
+##  3rd Qu.:3.000   3rd Qu.:13.68   3rd Qu.:3.083   3rd Qu.:2.558  
+##  Max.   :3.000   Max.   :14.83   Max.   :5.800   Max.   :3.230  
+##  Alcalinity.ash    Magnesium      Total.phenols     Flavanoids   
+##  Min.   :10.60   Min.   : 70.00   Min.   :0.980   Min.   :0.340  
+##  1st Qu.:17.20   1st Qu.: 88.00   1st Qu.:1.742   1st Qu.:1.205  
+##  Median :19.50   Median : 98.00   Median :2.355   Median :2.135  
+##  Mean   :19.49   Mean   : 99.74   Mean   :2.295   Mean   :2.029  
+##  3rd Qu.:21.50   3rd Qu.:107.00   3rd Qu.:2.800   3rd Qu.:2.875  
+##  Max.   :30.00   Max.   :162.00   Max.   :3.880   Max.   :5.080  
+##  Nonflavanoid.phenols Proanthocyanins Color.intensity       Hue        
+##  Min.   :0.1300       Min.   :0.410   Min.   : 1.280   Min.   :0.4800  
+##  1st Qu.:0.2700       1st Qu.:1.250   1st Qu.: 3.220   1st Qu.:0.7825  
+##  Median :0.3400       Median :1.555   Median : 4.690   Median :0.9650  
+##  Mean   :0.3619       Mean   :1.591   Mean   : 5.058   Mean   :0.9574  
+##  3rd Qu.:0.4375       3rd Qu.:1.950   3rd Qu.: 6.200   3rd Qu.:1.1200  
+##  Max.   :0.6600       Max.   :3.580   Max.   :13.000   Max.   :1.7100  
+##   OD280.OD315       Proline      
+##  Min.   :1.270   Min.   : 278.0  
+##  1st Qu.:1.938   1st Qu.: 500.5  
+##  Median :2.780   Median : 673.5  
+##  Mean   :2.612   Mean   : 746.9  
+##  3rd Qu.:3.170   3rd Qu.: 985.0  
+##  Max.   :4.000   Max.   :1680.0</code></pre>
+<pre class="r"><code>length(wn)</code></pre>
+<pre><code>## [1] 14</code></pre>
+<pre class="r"><code>names(wn)</code></pre>
+<pre><code>##  [1] &quot;Cultivar&quot;             &quot;Alcohol&quot;              &quot;Malic.acid&quot;          
+##  [4] &quot;Ash&quot;                  &quot;Alcalinity.ash&quot;       &quot;Magnesium&quot;           
+##  [7] &quot;Total.phenols&quot;        &quot;Flavanoids&quot;           &quot;Nonflavanoid.phenols&quot;
+## [10] &quot;Proanthocyanins&quot;      &quot;Color.intensity&quot;      &quot;Hue&quot;                 
+## [13] &quot;OD280.OD315&quot;          &quot;Proline&quot;</code></pre>
+<pre class="r"><code>table(wn$Cultivar)</code></pre>
+<pre><code>## 
+##  1  2  3 
+## 59 71 48</code></pre>
+<pre class="r"><code>wn$Cultivar</code></pre>
+<pre><code>##   [1] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+##  [36] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 2
+##  [71] 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+## [106] 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3
+## [141] 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+## [176] 3 3 3</code></pre>
+<pre class="r"><code>length(wn$Cultivar)</code></pre>
+<pre><code>## [1] 178</code></pre>
+<p>You can also embed plots, for example:</p>
+<pre class="r"><code>shuff&lt;-runif(nrow(wn))
+shuff</code></pre>
+<pre><code>##   [1] 0.668115058 0.717851798 0.211468681 0.531418632 0.534511870
+##   [6] 0.429354506 0.783616263 0.813714639 0.356052119 0.973515775
+##  [11] 0.634009175 0.103774425 0.848010860 0.099238284 0.256175686
+##  [16] 0.179985052 0.620013610 0.408825286 0.057278349 0.371671561
+##  [21] 0.506837634 0.936360106 0.463076320 0.195230186 0.302316747
+##  [26] 0.241559135 0.504114916 0.155899748 0.654166835 0.263609890
+##  [31] 0.839485168 0.892957743 0.555824649 0.838224367 0.198278545
+##  [36] 0.676740116 0.723030989 0.278849563 0.198741183 0.776292232
+##  [41] 0.251912789 0.716404762 0.634952629 0.639726481 0.478233241
+##  [46] 0.479632058 0.656339641 0.483563390 0.537389634 0.138811367
+##  [51] 0.108442554 0.714884223 0.028402337 0.887794307 0.722566579
+##  [56] 0.461205626 0.042581282 0.955405866 0.685589071 0.227057094
+##  [61] 0.808793896 0.366020712 0.434615062 0.449729721 0.799156996
+##  [66] 0.377191884 0.579395775 0.903406233 0.577217850 0.448936814
+##  [71] 0.306212792 0.849539340 0.932616402 0.938895086 0.945757122
+##  [76] 0.096547871 0.574935967 0.979602225 0.940591071 0.372786107
+##  [81] 0.836248637 0.993420955 0.356504937 0.547408531 0.895897222
+##  [86] 0.914280821 0.126988804 0.444221751 0.735157521 0.289982383
+##  [91] 0.566475752 0.285463504 0.956412909 0.798040330 0.810415254
+##  [96] 0.032259173 0.983253493 0.968804525 0.966795047 0.978446166
+## [101] 0.399820320 0.388625704 0.184322531 0.710165142 0.929458873
+## [106] 0.811505504 0.986238621 0.667998818 0.064214397 0.255564915
+## [111] 0.017547935 0.473600561 0.272798066 0.850113087 0.842272044
+## [116] 0.609424294 0.770685282 0.499630879 0.133385969 0.990537290
+## [121] 0.644460778 0.164944007 0.900974962 0.938689093 0.268197918
+## [126] 0.900064162 0.865124319 0.528305480 0.388792181 0.497618458
+## [131] 0.825214873 0.437650581 0.634671144 0.012807622 0.127603545
+## [136] 0.921662266 0.471754438 0.780342725 0.780175664 0.328755401
+## [141] 0.666402045 0.865169366 0.617098181 0.123990080 0.878030920
+## [146] 0.409436670 0.172988212 0.485638078 0.980742981 0.223435799
+## [151] 0.359712240 0.770744638 0.151713514 0.406317686 0.248682267
+## [156] 0.978394308 0.843781980 0.231402717 0.585856325 0.475350627
+## [161] 0.878633107 0.792700838 0.631276329 0.077404781 0.062174430
+## [166] 0.617063049 0.248395989 0.227548807 0.937033132 0.445671076
+## [171] 0.620468204 0.916363132 0.852450358 0.301397824 0.148510656
+## [176] 0.002696229 0.934466379 0.726562484</code></pre>
+<pre class="r"><code>wine&lt;-wn[order(shuff),]
+wine$Cultivar</code></pre>
+<pre><code>##   [1] 3 3 2 1 2 1 1 3 2 3 2 1 1 1 3 2 3 2 1 3 3 1 2 3 1 2 1 1 1 1 3 2 3 3 1
+##  [36] 3 3 1 2 1 1 2 2 1 2 2 3 1 2 3 1 2 3 2 1 2 2 2 2 2 3 1 3 1 2 3 2 3 2 2
+##  [71] 1 1 3 2 3 1 1 1 3 2 2 1 1 2 1 1 1 2 1 2 2 2 2 3 2 3 3 1 3 3 1 3 1 1 2
+## [106] 1 1 3 2 1 1 1 2 1 1 1 1 1 3 2 2 3 1 3 3 1 3 2 2 2 2 2 1 3 2 1 1 2 3 1
+## [141] 2 2 3 2 3 3 3 1 1 2 2 2 2 2 3 3 2 2 3 1 3 2 2 2 2 1 2 2 2 1 3 2 2 3 2
+## [176] 2 2 2</code></pre>
+<p>You can also embed plots, for example:</p>
+<pre class="r"><code>qplot(wine$Alcohol,wine$Ash,data=wine)+geom_point(aes(colour = factor(wine$Cultivar),shape = factor(wine$Cultivar)))</code></pre>
+<p><img src="x" title alt width="672" /></p>
+<pre class="r"><code>qplot(wine$Malic.acid,wine$Alcohol,data=wine)+geom_point(aes(colour = factor(wine$Cultivar),shape = factor(wine$Cultivar)))</code></pre>
+<p><img src="x" title alt width="672" /></p>
+<pre class="r"><code>summary(wine)</code></pre>
+<pre><code>##     Cultivar        Alcohol        Malic.acid         Ash       
+##  Min.   :1.000   Min.   :11.03   Min.   :0.740   Min.   :1.360  
+##  1st Qu.:1.000   1st Qu.:12.36   1st Qu.:1.603   1st Qu.:2.210  
+##  Median :2.000   Median :13.05   Median :1.865   Median :2.360  
+##  Mean   :1.938   Mean   :13.00   Mean   :2.336   Mean   :2.367  
+##  3rd Qu.:3.000   3rd Qu.:13.68   3rd Qu.:3.083   3rd Qu.:2.558  
+##  Max.   :3.000   Max.   :14.83   Max.   :5.800   Max.   :3.230  
+##  Alcalinity.ash    Magnesium      Total.phenols     Flavanoids   
+##  Min.   :10.60   Min.   : 70.00   Min.   :0.980   Min.   :0.340  
+##  1st Qu.:17.20   1st Qu.: 88.00   1st Qu.:1.742   1st Qu.:1.205  
+##  Median :19.50   Median : 98.00   Median :2.355   Median :2.135  
+##  Mean   :19.49   Mean   : 99.74   Mean   :2.295   Mean   :2.029  
+##  3rd Qu.:21.50   3rd Qu.:107.00   3rd Qu.:2.800   3rd Qu.:2.875  
+##  Max.   :30.00   Max.   :162.00   Max.   :3.880   Max.   :5.080  
+##  Nonflavanoid.phenols Proanthocyanins Color.intensity       Hue        
+##  Min.   :0.1300       Min.   :0.410   Min.   : 1.280   Min.   :0.4800  
+##  1st Qu.:0.2700       1st Qu.:1.250   1st Qu.: 3.220   1st Qu.:0.7825  
+##  Median :0.3400       Median :1.555   Median : 4.690   Median :0.9650  
+##  Mean   :0.3619       Mean   :1.591   Mean   : 5.058   Mean   :0.9574  
+##  3rd Qu.:0.4375       3rd Qu.:1.950   3rd Qu.: 6.200   3rd Qu.:1.1200  
+##  Max.   :0.6600       Max.   :3.580   Max.   :13.000   Max.   :1.7100  
+##   OD280.OD315       Proline      
+##  Min.   :1.270   Min.   : 278.0  
+##  1st Qu.:1.938   1st Qu.: 500.5  
+##  Median :2.780   Median : 673.5  
+##  Mean   :2.612   Mean   : 746.9  
+##  3rd Qu.:3.170   3rd Qu.: 985.0  
+##  Max.   :4.000   Max.   :1680.0</code></pre>
+<p>You can also embed plots, for example:</p>
+<pre class="r"><code>wine.scaled&lt;-as.data.frame(lapply(wine[,c(2:14)], scale))
+head(wine.scaled)</code></pre>
+<pre><code>##      Alcohol Malic.acid         Ash Alcalinity.ash Magnesium Total.phenols
+## 1  0.3318221  1.7398366 -0.38826018    0.151234178 1.4184107    -1.1266456
+## 2 -0.3702983  1.0863858 -0.02375431    0.600394638 0.4381890    -0.9508850
+## 3 -1.8977182  1.2564621 -1.99208598    0.001514024 0.5082048     1.4138950
+## 4  1.0093068 -0.5248627  0.19494920   -1.645407665 0.7882682     2.5323719
+## 5 -0.6536100 -0.7307445 -0.60696370   -0.148206130 4.3590757     0.3273744
+## 6  1.5020229 -0.5696196 -0.24245783   -0.956694959 1.2783790     1.4458514
+##   Flavanoids Nonflavanoid.phenols Proanthocyanins Color.intensity
+## 1 -1.3407999            0.5475632      -0.4208878      2.21797932
+## 2 -0.8302172           -1.5415732      -1.3119372     -0.02505726
+## 3  0.5513596           -0.9791134       3.4752692     -0.93089895
+## 4  1.7126851           -0.3363022       0.4876331      0.85921678
+## 5  0.2410054           -0.3363022       2.9511225     -1.06030491
+## 6  0.9718395           -0.8184106       0.7671780      0.57021014
+##           Hue OD280.OD315    Proline
+## 1 -1.60759033 -1.48126700  0.2797861
+## 2 -0.77634083 -1.86155382 -0.4664648
+## 3 -0.90759075  0.27932011 -0.5871352
+## 4  0.22990857  0.91313147  1.4071014
+## 5  0.88615818  0.02579557  0.6036908
+## 6 -0.07634125  0.98355496  0.7084835</code></pre>
+<pre class="r"><code>summary(wine.scaled)</code></pre>
+<pre><code>##     Alcohol           Malic.acid           Ash          
+##  Min.   :-2.42739   Min.   :-1.4290   Min.   :-3.66881  
+##  1st Qu.:-0.78603   1st Qu.:-0.6569   1st Qu.:-0.57051  
+##  Median : 0.06083   Median :-0.4219   Median :-0.02375  
+##  Mean   : 0.00000   Mean   : 0.0000   Mean   : 0.00000  
+##  3rd Qu.: 0.83378   3rd Qu.: 0.6679   3rd Qu.: 0.69615  
+##  Max.   : 2.25341   Max.   : 3.1004   Max.   : 3.14745  
+##  Alcalinity.ash        Magnesium       Total.phenols     
+##  Min.   :-2.663505   Min.   :-2.0824   Min.   :-2.10132  
+##  1st Qu.:-0.687199   1st Qu.:-0.8221   1st Qu.:-0.88298  
+##  Median : 0.001514   Median :-0.1219   Median : 0.09569  
+##  Mean   : 0.000000   Mean   : 0.0000   Mean   : 0.00000  
+##  3rd Qu.: 0.600395   3rd Qu.: 0.5082   3rd Qu.: 0.80672  
+##  Max.   : 3.145637   Max.   : 4.3591   Max.   : 2.53237  
+##    Flavanoids      Nonflavanoid.phenols Proanthocyanins   
+##  Min.   :-1.6912   Min.   :-1.8630      Min.   :-2.06321  
+##  1st Qu.:-0.8252   1st Qu.:-0.7381      1st Qu.:-0.59560  
+##  Median : 0.1059   Median :-0.1756      Median :-0.06272  
+##  Mean   : 0.0000   Mean   : 0.0000      Mean   : 0.00000  
+##  3rd Qu.: 0.8467   3rd Qu.: 0.6078      3rd Qu.: 0.62741  
+##  Max.   : 3.0542   Max.   : 2.3956      Max.   : 3.47527  
+##  Color.intensity        Hue            OD280.OD315         Proline       
+##  Min.   :-1.6297   Min.   :-2.08884   Min.   :-1.8897   Min.   :-1.4890  
+##  1st Qu.:-0.7929   1st Qu.:-0.76540   1st Qu.:-0.9496   1st Qu.:-0.7824  
+##  Median :-0.1588   Median : 0.03303   Median : 0.2371   Median :-0.2331  
+##  Mean   : 0.0000   Mean   : 0.00000   Mean   : 0.0000   Mean   : 0.0000  
+##  3rd Qu.: 0.4926   3rd Qu.: 0.71116   3rd Qu.: 0.7864   3rd Qu.: 0.7561  
+##  Max.   : 3.4258   Max.   : 3.29241   Max.   : 1.9554   Max.   : 2.9631</code></pre>
+<p>You can also embed plots, for example:</p>
+<pre class="r"><code>normalize&lt;- function(x) {
+  return((x-min(x))/(max(x)-min(x)))
+}
+wine.normalized&lt;-as.data.frame(lapply(wine[,c(2:14)],normalize))
+head(wine.normalized)</code></pre>
+<pre><code>##     Alcohol Malic.acid       Ash Alcalinity.ash Magnesium Total.phenols
+## 1 0.5894737  0.6996047 0.4812834      0.4845361 0.5434783     0.2103448
+## 2 0.4394737  0.5553360 0.5347594      0.5618557 0.3913043     0.2482759
+## 3 0.1131579  0.5928854 0.2459893      0.4587629 0.4021739     0.7586207
+## 4 0.7342105  0.1996047 0.5668449      0.1752577 0.4456522     1.0000000
+## 5 0.3789474  0.1541502 0.4491979      0.4329897 1.0000000     0.5241379
+## 6 0.8394737  0.1897233 0.5026738      0.2938144 0.5217391     0.7655172
+##   Flavanoids Nonflavanoid.phenols Proanthocyanins Color.intensity
+## 1 0.07383966            0.5660377       0.2965300       0.7610922
+## 2 0.18143460            0.0754717       0.1356467       0.3174061
+## 3 0.47257384            0.2075472       1.0000000       0.1382253
+## 4 0.71729958            0.3584906       0.4605678       0.4923208
+## 5 0.40717300            0.3584906       0.9053628       0.1126280
+## 6 0.56118143            0.2452830       0.5110410       0.4351536
+##          Hue OD280.OD315   Proline
+## 1 0.08943089 0.106227106 0.3972896
+## 2 0.24390244 0.007326007 0.2296719
+## 3 0.21951220 0.564102564 0.2025678
+## 4 0.43089431 0.728937729 0.6504993
+## 5 0.55284553 0.498168498 0.4700428
+## 6 0.37398374 0.747252747 0.4935806</code></pre>
+<pre class="r"><code>summary(wine.normalized)</code></pre>
+<pre><code>##     Alcohol         Malic.acid          Ash         Alcalinity.ash  
+##  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  
+##  1st Qu.:0.3507   1st Qu.:0.1705   1st Qu.:0.4545   1st Qu.:0.3402  
+##  Median :0.5316   Median :0.2223   Median :0.5348   Median :0.4588  
+##  Mean   :0.5186   Mean   :0.3155   Mean   :0.5382   Mean   :0.4585  
+##  3rd Qu.:0.6967   3rd Qu.:0.4629   3rd Qu.:0.6404   3rd Qu.:0.5619  
+##  Max.   :1.0000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000  
+##    Magnesium      Total.phenols      Flavanoids     Nonflavanoid.phenols
+##  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000      
+##  1st Qu.:0.1957   1st Qu.:0.2629   1st Qu.:0.1825   1st Qu.:0.2642      
+##  Median :0.3043   Median :0.4741   Median :0.3787   Median :0.3962      
+##  Mean   :0.3233   Mean   :0.4535   Mean   :0.3564   Mean   :0.4375      
+##  3rd Qu.:0.4022   3rd Qu.:0.6276   3rd Qu.:0.5348   3rd Qu.:0.5802      
+##  Max.   :1.0000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000      
+##  Proanthocyanins  Color.intensity       Hue          OD280.OD315    
+##  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  
+##  1st Qu.:0.2650   1st Qu.:0.1655   1st Qu.:0.2459   1st Qu.:0.2445  
+##  Median :0.3612   Median :0.2910   Median :0.3943   Median :0.5531  
+##  Mean   :0.3725   Mean   :0.3224   Mean   :0.3882   Mean   :0.4915  
+##  3rd Qu.:0.4858   3rd Qu.:0.4198   3rd Qu.:0.5203   3rd Qu.:0.6960  
+##  Max.   :1.0000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000  
+##     Proline      
+##  Min.   :0.0000  
+##  1st Qu.:0.1587  
+##  Median :0.2821  
+##  Mean   :0.3344  
+##  3rd Qu.:0.5043  
+##  Max.   :1.0000</code></pre>
+<pre class="r"><code>nrow(wine)</code></pre>
+<pre><code>## [1] 178</code></pre>
+<p>You can also embed plots, for example:</p>
+<pre class="r"><code>wine.normalized.train&lt;-wine.normalized[1:150,]
+wine.normalized.test&lt;-wine.normalized[151:178,]
+wine.normalized.train.target&lt;-wine[1:150,c(1)]
+wine.normalized.test.target&lt;-wine[151:178,c(1)]
+wine.normalized.test.target</code></pre>
+<pre><code>##  [1] 2 2 2 2 3 3 2 2 3 1 3 2 2 2 2 1 2 2 2 1 3 2 2 3 2 2 2 2</code></pre>
+<pre class="r"><code>k&lt;-5
+knn.m1&lt;-knn(train = wine.normalized.train, test = wine.normalized.test,wine.normalized.train.target,k)
+knn.m1</code></pre>
+<pre><code>##  [1] 2 2 2 2 3 3 2 2 3 1 3 2 1 2 2 1 2 2 2 1 3 2 2 3 3 2 2 1
+## Levels: 1 2 3</code></pre>
+<pre class="r"><code>length(knn.m1)</code></pre>
+<pre><code>## [1] 28</code></pre>
+<pre class="r"><code>cm&lt;-table(wine.normalized.test.target,knn.m1)
+cm</code></pre>
+<pre><code>##                            knn.m1
+## wine.normalized.test.target  1  2  3
+##                           1  3  0  0
+##                           2  2 16  1
+##                           3  0  0  6</code></pre>
+</div>
+<div id="assingment" class="section level1">
+<h1>Assingment</h1>
+<ul>
+<li><p>Go to the <a href="https://archive.ics.uci.edu/ml/">UC Irvine Machine Learning Repository</a> and find a dataset for supervised classification. Every student MUST use a different dataset so you MUST get approved for which you can going to use. This can be the same dataset you used for the unsupervised clustering as long as the data has some labeled data.</p></li>
+<li>Classify your data using k-Nearest Neighbors. Answer the following questions:
+<ul>
+<li>Does the k for kNN make a difference? Try for a range of values of k.</li>
+<li>Does scaling, normalization or leaving the data unscaled make a difference for kNN?</li>
+</ul></li>
+</ul>
+</div>
+<div id="resources" class="section level1">
+<h1>Resources</h1>
+<ul>
+<li><p><a href="http://blog.datacamp.com/machine-learning-in-r/">Using R For k-Nearest Neighbors (KNN)</a></p></li>
+<li><p><a href="http://blog.webagesolutions.com/archives/1164">Using the k-Nearest Neighbors Algorithm in R</a></p></li>
+<li><p><a href="https://onlinecourses.science.psu.edu/stat857/node/129">kNN PSU</a></p></li>
+</ul>
+<pre><code>
+
+
+
+
+
+
+
+
+
+
+</code></pre>
+</div>
+
+
+</div>
+
+<xxxx>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</xxxx>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<xxxx>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "xxxx/xxxxxxxxxx";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</xxxx>
+
+</body>
+</html>

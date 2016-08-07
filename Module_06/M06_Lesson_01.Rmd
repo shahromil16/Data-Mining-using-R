@@ -1,0 +1,261 @@
+---
+title: "k-Nearest Neighbors"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson we'll learn the theory behind using k-nearest neighbors (kNN) as a supervised classification technique. We'll then use kNN to classify the UCI wine dataset in R.
+
+
+# Additional packages needed
+ 
+To run the code in M06_Lesson_01.Rmd you may need additional packages.
+
+* If necessary install the followings packages.
+
+`install.packages("ggplot2");`   
+`install.packages("class");`   
+
+
+```{r}
+require(ggplot2)
+require(class)
+```
+
+
+# Data
+
+We will be using the [UCI Machine Learning Repository: Wine Data Set](https://archive.ics.uci.edu/ml/datasets/Wine).  These data are the results of a chemical analysis of wines grown in the same region in Italy but derived from three different cultivars. The analysis determined the quantities of 13 constituents found in each of the three types of wines.  
+
+The attributes are:  
+1) Alcohol  
+2) Malic acid   
+3) Ash   
+4) Alcalinity of ash   
+5) Magnesium   
+6) Total phenols   
+7) Flavanoids   
+8) Nonflavanoid phenols   
+9) Proanthocyanins   
+10) Color intensity   
+11) Hue   
+12) OD280/OD315 of diluted wines   
+13) Proline   
+
+Feel free to tweet questions to [@NikBearBrown](https://twitter.com/NikBearBrown)  
+
+```{r data}
+# Load our data
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M06/wine.csv'
+wn <- read.csv(url(data_url))
+head(wn)
+```
+
+
+
+# k-Nearest Neighbors (kNN)
+
+A simple supervised learning algorithm is [k-Nearest Neighbors](https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm) algorithm (k-NN). KNN is a non-parametric method used for classification and regression.
+
+In both cases, the input consists of the k closest training examples in the feature space. The output depends on whether k-NN is used for classification or regression:
+
+In k-NN classification, the output is a class membership. An object is classified by a majority vote of its neighbors, with the object being assigned to the class most common among its k nearest neighbors (k is a positive integer, typically small). If k = 1, then the object is simply assigned to the class of that single nearest neighbor.  
+
+![k-nearest neighbor voting](http://nikbearbrown.com/YouTube/MachineLearning/M06/k-Nearest_Neighbors.png)  
+
+*k-nearest neighbor voting*
+
+In k-NN regression, the output is the property value for the object. This value is the average of the values of its k nearest neighbors.
+
+k-NN has the nice property that a labled subset of a data set could be used to label the whole data set. This is especially important in the analysis of “big-data.” Most big-data sets are only partially labled, as labeling often requires human annotation. While many are looking to unsupervised learning the ‘future’ of big-data, k-Nearest Neighbors is an instance of a supervised learning algorithm that can be used with big-data.
+
+
+The kNN classification problem is to find the k nearest data points in a data set to a given query data point. The point is then assigned to the group by a majority "vote." For this reason, pick an odd k is prefered as the odd vote can break ties. This operation is also known as a kNN join, and can be defined as: given two data sets $R$ and $S$, find the k nearest Neighbor from $S$ for every object in $R$. $S$ refers to data that has already been classified, the training set. $R$ refers to data that is needs to be classified.
+
+The kNN algorithm can be fairly expensive, especially if one chooses a large k, as the k-nearest neighbors in $S$ for every point in $R$ needs to be calculated.   
+
+## Nearest neighbor search
+
+A simple solution to finding nearest neighbors is to compute the distance from the each point in $S$ to every point in $R$ and keeping track of the "best so far". This algorithm, sometimes referred to as the naive approach, has a running time of O(|R||S|).
+
+One can speed up the search to retrieve a "good guess" of the nearest neighbor. This is often done be limiting the search to a preset radius around a point culling out most of the points in $S$.  If k neighbors aren't not found in the radius then the bound can be iteratively expanded until k are found.  Altnernatively, the vote could be made using fewer points when k points aren't found within a radius r. 
+
+## k-Nearest Neighbors is nonparametric "lazy learning "
+
+K-Nearest Neighbors algorithm (kNN) is a nonparametric method for classifying objects based on the closest training examples in the feature space. kNN is nonparametric becuase it d oes not involve any estimation of parameters. This is sometimes called "lazy learning" or instance-based learning, as the mapping is approximated locally and all computation is deferred until classification. 
+
+
+# kNN Classification and Distance Metrics
+
+
+Neighbors are defined by a distance or dissimilarity measure. In essence, the only thing that kNN requires is some measure of "closeness" of the points in $S$ and $R$. Any distance metric or dissimilarity measure can be used. The most common being the Euclidean distance between the points $x = (x_1, x_2,..., x_n)$ and $y = (y_1, y_2,..., y_n)$ is  given by the pythagorean formula:  
+
+$$
+\begin{align}\mathrm{d}(\mathbf{p},\mathbf{q}) = \mathrm{d}(\mathbf{q},\mathbf{p}) & = \sqrt{(q_1-p_1)^2 + (q_2-p_2)^2 + \cdots + (q_n-p_n)^2} \\[8pt]
+& = \sqrt{\sum_{i=1}^n (q_i-p_i)^2}.\end{align}
+$$
+
+
+Any measure of "closeness",  distance or dissimilarity measure can be used. For example,
+
+* [Chebyshev distance](https://en.wikipedia.org/wiki/Chebyshev_distance) - measures distance assuming only the most significant dimension is relevant.  
+* [Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance) - identifies the difference bit by bit of two strings  
+* [Mahalanobis distance](https://en.wikipedia.org/wiki/Mahalanobis_distance) - normalizes based on a covariance matrix to make the distance metric scale-invariant.  
+* [Manhattan distance](https://en.wikipedia.org/wiki/Taxicab_geometry) - measures distance following only axis-aligned directions.  
+* [Minkowski distance](https://en.wikipedia.org/wiki/Minkowski_distance) - is a generalization that unifies Euclidean distance, Manhattan distance, and Chebyshev distance  
+
+.. and many more.
+
+# kNN Algorithm  
+
+
+## Distance function
+
+The distance function depends on your needs, but in general choosing features and distance metrics in which being "close" makes some sense in your domain are the distance metrics and features to choose.  The type of variable, categorical, ordinal or nominal should be considered when choosing a sensible measure of closeness.
+
+## k nearest neighbors
+
+Given an data point p, a training data set $S$, and an integer k, the k nearest neighbors of p from $S$, denoted as kNN(p, S), are a set of k objects from $S$ such that:
+
+
+$$
+∀o ∊ kNN(q, S), ∀s ∊{S – kNN(q, S)}, |o, p| ≤ |s, p|
+$$
+
+
+
+
+## kNN join  
+
+Given two data sets R and S (where S is a training data set) and an integer k, the kNN join of R and S is defined as:
+
+kNNjoin(R, S) = {(r, s)|∀r ∊ R, ∀s ∊ kNN(r, S)}
+
+Basically, this combines each object r ∊ R with its k nearest neighbors from S.
+
+
+# Steps in kNN Classification  
+
+
+The kNN algorithm can be summarized in the following simple steps:
+
+* Determine k (the selection of k depends on your data and project requirements; there is no magic formula for k).  
+
+* Calculate the distances between the new input and all the training data (as with k, the selection of a distance function also depends on the type of data).  
+
+* Sort the distance and determine the k nearest neighbors based on the kth minimum distance.  
+
+* Gather the categories of those neighbors.  
+
+* Determine the category based on majority vote.  
+
+
+# k-Nearest Neighbors (kNN) in R
+
+k-Nearest Neighbors (kNN) in R
+
+
+```{r}
+head(wn)
+summary(wn)
+length(wn)
+names(wn)
+table(wn$Cultivar)
+wn$Cultivar
+length(wn$Cultivar)
+```
+
+You can also embed plots, for example:
+
+
+```{r}
+shuff<-runif(nrow(wn))
+shuff
+wine<-wn[order(shuff),]
+wine$Cultivar
+```
+
+You can also embed plots, for example:
+
+
+```{r}
+qplot(wine$Alcohol,wine$Ash,data=wine)+geom_point(aes(colour = factor(wine$Cultivar),shape = factor(wine$Cultivar)))
+qplot(wine$Malic.acid,wine$Alcohol,data=wine)+geom_point(aes(colour = factor(wine$Cultivar),shape = factor(wine$Cultivar)))
+summary(wine)
+```
+
+You can also embed plots, for example:
+
+
+```{r}
+wine.scaled<-as.data.frame(lapply(wine[,c(2:14)], scale))
+head(wine.scaled)
+summary(wine.scaled)
+```
+
+You can also embed plots, for example:
+
+
+```{r}
+normalize<- function(x) {
+  return((x-min(x))/(max(x)-min(x)))
+}
+wine.normalized<-as.data.frame(lapply(wine[,c(2:14)],normalize))
+head(wine.normalized)
+summary(wine.normalized)
+nrow(wine)
+```
+
+You can also embed plots, for example:
+
+
+```{r}
+wine.normalized.train<-wine.normalized[1:150,]
+wine.normalized.test<-wine.normalized[151:178,]
+wine.normalized.train.target<-wine[1:150,c(1)]
+wine.normalized.test.target<-wine[151:178,c(1)]
+wine.normalized.test.target
+k<-5
+knn.m1<-knn(train = wine.normalized.train, test = wine.normalized.test,wine.normalized.train.target,k)
+knn.m1
+length(knn.m1)
+cm<-table(wine.normalized.test.target,knn.m1)
+cm
+```
+
+# Assingment
+
+
+* Go to the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/) and find a dataset for supervised classification. Every student MUST use a different dataset so you MUST get approved for which you can going to use. This can be the same dataset you used for the unsupervised clustering as long as the data has some labeled data.  
+
+* Classify your data using k-Nearest Neighbors. Answer the following questions:
+    * Does the k for kNN make a difference? Try for a range of values of k.
+    * Does scaling, normalization or leaving the data unscaled make a difference for kNN?
+    
+
+ 
+# Resources   
+
+
+* [Using R For k-Nearest Neighbors (KNN)](http://blog.datacamp.com/machine-learning-in-r/)
+
+* [Using the k-Nearest Neighbors Algorithm in R](http://blog.webagesolutions.com/archives/1164)
+
+* [kNN PSU](https://onlinecourses.science.psu.edu/stat857/node/129)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

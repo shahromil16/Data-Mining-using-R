@@ -1,0 +1,119 @@
+---
+title: "M6_L1_RomilShah"
+author: "Romil Shah"
+date: "July 7, 2016"
+output: word_document
+---
+
+## Read Data and additional packages
+
+```{r}
+require(ggplot2)
+require(class)
+library(class)
+
+data_url <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/pima-indians-diabetes.data'
+dataframe <- read.csv(url(data_url))
+colnames(dataframe) <- c("Npreg","plasmaGluc","bloodPress","skinFold","insulin","bmi","diabetes","age","class")
+pima <- dataframe[1:8]
+head(pima)
+length(pima)
+names(pima)
+
+table(pima$Npreg)
+pima$diabetes
+length(pima$Npreg)
+
+shuff <- runif(nrow(pima))
+shuff
+
+pimaID <- pima[order(shuff),]
+pimaID$Npreg
+```
+
+Plotting
+
+```{r}
+qplot(pimaID$age,pimaID$insulin,data=pimaID)+geom_point(aes(colour=factor(pimaID$Npreg),shape=factor(pimaID$Npreg)))
+
+qplot(pimaID$bmi,pimaID$age,data=pimaID)+geom_point(aes(colour=factor(pimaID$Npreg),shape=factor(pimaID$Npreg)))
+
+summary(pimaID)
+
+pimaID.scaled <- as.data.frame(lapply(pimaID[,c(2:8)], scale))
+head(pimaID.scaled)
+summary(pimaID.scaled)
+
+normalize <- function (x) {
+  return((x-min(x))/(max(x)-min(x)))
+}
+
+pimaID.normalized <- as.data.frame(lapply(pimaID[,c(2:8)],normalize))
+head(pimaID.normalized)
+summary(pimaID.normalized)
+
+nrow(pimaID)
+
+pimaID.normalized.train <- pimaID.normalized[1:600,]
+pimaID.normalized.test <- pimaID.normalized[601:767,]
+pimaID.normalized.train.target <- pimaID[1:600,c(1)]
+pimaID.normalized.test.target <- pimaID[601:767,c(1)]
+pimaID.normalized.test.target
+
+#(1) K = 3
+k<-3
+knn.m1 <- class::knn(train=pimaID.normalized.train, test=pimaID.normalized.test, pimaID.normalized.train.target,k)
+knn.m1
+length(knn.m1)
+cm1 <- table(pimaID.normalized.test.target,knn.m1)
+msetrain1<-mean((as.numeric(knn.m1)-as.numeric(pimaID.normalized.train.target)))^2
+msetest1<-mean((as.numeric(knn.m1)-as.numeric(pimaID.normalized.test.target)))^2
+
+#(2) K = 5
+k<-5
+knn.m2 <-  class::knn(train=pimaID.normalized.train, test=pimaID.normalized.test, pimaID.normalized.train.target,k)
+knn.m2
+length(knn.m2)
+cm2 <- table(pimaID.normalized.test.target,knn.m2)
+msetrain2<-mean((as.numeric(knn.m2)-as.numeric(pimaID.normalized.train.target)))^2
+msetest2<-mean((as.numeric(knn.m2)-as.numeric(pimaID.normalized.test.target)))^2
+
+#(3) K = 7
+k<-7
+knn.m3 <-  class::knn(train=pimaID.normalized.train, test=pimaID.normalized.test, pimaID.normalized.train.target,k)
+knn.m3
+length(knn.m3)
+cm3 <- table(pimaID.normalized.test.target,knn.m3)
+msetrain3<-mean((as.numeric(knn.m3)-as.numeric(pimaID.normalized.train.target)))^2
+msetest3<-mean((as.numeric(knn.m3)-as.numeric(pimaID.normalized.test.target)))^2
+
+#(4) K = 10
+k<-10
+knn.m4 <-  class::knn(train=pimaID.normalized.train, test=pimaID.normalized.test, pimaID.normalized.train.target,k)
+knn.m4
+length(knn.m4)
+cm4 <- table(pimaID.normalized.test.target,knn.m4)
+msetrain4<-mean((as.numeric(knn.m4)-as.numeric(pimaID.normalized.train.target)))^2
+msetest4<-mean((as.numeric(knn.m4)-as.numeric(pimaID.normalized.test.target)))^2
+
+#(5) K = 25
+k<-25
+knn.m5 <-  class::knn(train=pimaID.normalized.train, test=pimaID.normalized.test, pimaID.normalized.train.target,k)
+knn.m5
+length(knn.m5)
+cm5 <- table(pimaID.normalized.test.target,knn.m5)
+msetrain5<-mean((as.numeric(knn.m5)-as.numeric(pimaID.normalized.train.target)))^2
+msetest5<-mean((as.numeric(knn.m5)-as.numeric(pimaID.normalized.test.target)))^2
+```
+
+
+## Answers:
+
+####A(1)
+I have tried 5 different values of 'k' i.e. 5, 3, 7, 10 and 25.
+It is clearly observed from 'MSE test' and 'MSE train' that as k increases from 3 to 25, the MSE decreases for both training and testing. Thus higher the value of 'k', lessser is the error. At some point, the MSE value becomes almost constant.
+Thus the 'k' in knn makes a huge difference in reducing the error for the training and testing dataset.
+
+####A(2)
+Normalization of the data is important so that the data is consistent. Hence when we can see that the data is not consistent based upon the summary, we can normalize it in order to make it more consistent. 
+Scaling of the data improves the performace in terms of accuracy and lesser MSE. Scaling of the data removes the high differences between the data and hence improve model performace. In certain data the scaling is not required as the data is close to each other. But in cases where the data variation is high, scaling makes it easier to apply knn and improve performace.

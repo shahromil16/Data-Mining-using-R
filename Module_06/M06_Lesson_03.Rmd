@@ -1,0 +1,297 @@
+---
+title: "Support Vector Machines"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In this lesson we'll learn the theory behind using Linear Discriminant Analysis (LDA) as a supervised classification technique. We'll then use LDA to classify the UCI wine dataset in R.
+
+
+# Additional packages needed
+ 
+To run the code in M06_Lesson_03.Rmd you may need additional packages.
+
+* If necessary install the followings packages.
+
+`install.packages("ggplot2");`   
+`install.packages("e1071");`   
+`install.packages("kernlab");` 
+
+```{r}
+require(ggplot2)
+require(e1071)
+require(kernlab)
+```
+
+
+# Data
+
+We will be using the dataset 'svm_regression.csv' which is randomly generated. [svm_regression.csv](http://nikbearbrown.com/YouTube/MachineLearning/M06/svm_regression.csv).  T
+
+```{r}
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M06/svm_regression.csv'
+svm.data <- read.csv(url(data_url), sep=",", header = TRUE)
+head(svm.data)
+```
+
+
+# Support Vector Machines
+
+
+Support vector machine constructs a hyperplane or set of hyperplanes in a high- or infinite-dimensional space, which can be used for classification, regression, or other tasks. Given a set of data points that belong to either of two classes, an SVM finds the hyperplane that:
+
+* Leaves the largest possible fraction of points of the same class on the same side.
+* Maximizes the distance of either class from the hyperplane.
+* Find the optimal separating hyperplane that minimizes the risk of misclassifying the training samples and unseen test samples.
+
+![SVM](http://nikbearbrown.com/YouTube/MachineLearning/M06/SVM.png)  
+*SVM*  
+
+
+Pseudocode
+
+Given a  guess of width and bias we can:
+
+* Compute whether all data points are in the correct half-planes.  
+* Compute the width of the margin.  
+* Search the space of  width’s and bias to find the widest margin that matches all the datapoints.  
+
+
+## Kernels
+
+It is much easier and efficient to find Separating boundaries which are in the form of a straight lines as oppossed to curvy Separating boundaries. Kernels help us turn a linear classifier into a non-linear one. That is, they transform a curvy separating boundary that is only non-linearly separable to a linearly separable discriminant in a higher dimensional space.
+
+![Kernels](http://nikbearbrown.com/YouTube/MachineLearning/M06/Kernels.png)
+
+### Kernels (1-D Example)
+
+For example, squaring the data may take some points that are not linearly separable in 1-D space to be linearly separable in 2D space.
+
+![Kernels](http://nikbearbrown.com/YouTube/MachineLearning/M06/Kernels_1D_2D.png)
+
+ 
+## Kernel Trick 
+
+While coming up with functions that map linearly separable sets to   SVM, we only need to know the inner product of vectors in the linearly separable sets in higher dimensional spaces arbitrarily  coordinate space.
+
+Computing the kernel of x and y gives the same result as the dot product in the mapped (high-dimensional) space. The mappings used by SVM schemes are designed to ensure that dot products may be computed easily in terms of the variables in the original space, by defining them in terms of a kernel function k(x,y) selected to suit the problem. This "Kernel trick" is" essentially is to define a similarity function in terms of original space itself without even defining (or even knowing), what the transformation function K will be. 
+
+## Linear SVM
+
+Support Vectors are those datapoints that the margin pushes up against
+
+Given some training data $\mathcal{D}$, a set of n points of the form
+$\mathcal{D} = \left\{ (\mathbf{x}_i, y_i)\mid\mathbf{x}_i \in \mathbb{R}^p,\, y_i \in \{-1,1\}\right\}_{i=1}^n$
+where the $y_i$ is either 1 or −1, indicating the class to which the point $\mathbf{x}_i$ belongs. Each  $\mathbf{x}_i$  is a p-dimensional real vector. We want to find the maximum-margin hyperplane that divides the points having $y_i=1$ from those having $y_i=-1$. Any hyperplane can be written as the set of points $\mathbf{x}$ satisfying $\mathbf{w}\cdot\mathbf{x} - b=0$, where $\mathbf{w}\cdot\mathbf{x}$,denotes the dot product of $\mathbf{w}$ and $\mathbf{x}$, The variable ${\mathbf{w}}$ is the (not necessarily normalized) normal vector to the hyperplane. The parameter $\tfrac{b}{\|\mathbf{w}\|}$ determines the offset of the hyperplane from the origin along the normal vector ${\mathbf{w}}$.
+
+![Linear SVM](http://nikbearbrown.com/YouTube/MachineLearning/M06/Maximum_Margin_Classification_SVM.png)  
+*Linear SVM*  
+
+
+# Non-Linear SVM
+
+Non-linear classifiers are created by applying the kernel trick then generating maximum-margin hyperplanes.
+
+
+# Support Vector Machines in R
+
+
+```{r}
+#Generate random numbers
+x<-matrix(rnorm(40),ncol=2)   
+set.seed(333)
+
+#First 10 elements of Y are -1 and the rest are 1
+y<-c(rep(-1,10),rep(1,10))
+
+#Add 1 to the last 10 rows of x
+x[y==1,]<- x[y==1,]+1
+
+#Checking if classes are linearly separable
+plot(x,col=(3-y))   #col= 2 means blue, col= 4 means red 
+
+dataframe<-data.frame(x=x,y=as.factor(y))
+
+
+
+#----------------------Training a model on the data ----
+
+svm.fit<- svm(y~.,data=dataframe, kernal="linear",cost=10,scale=FALSE)
+plot(svm.fit,dataframe)
+
+# List my Support Vectors
+svm.fit$index
+
+summary(svm.fit)
+
+# Let's chage Cost
+svm.fit1<- svm(y~.,data=dataframe, kernal="linear",cost=0.1,scale=FALSE)
+plot(svm.fit1,dataframe)  # Lower Cost - Wider Margin
+
+#Cross-Validation -Find Best Model for prediction 
+tune.out<- tune(svm,y~.,data=dataframe,kernal="linear",ranges=list(cost=c(0.001,0.01,0.1,1,5,10,100)))
+bestmodel=tune.out$best.model
+summary(bestmodel)
+
+
+
+##----------------------Let's focus on Predicting the Function ---
+
+## Generate Test data
+xtest = matrix(rnorm(40),ncol=2)
+ytest = sample(c(-1,1),20,rep=TRUE)
+xtest[ytest==1,]<- xtest[ytest==1,]+1
+
+testdf<-data.frame(x=xtest,y=as.factor(ytest))
+testdf
+
+#Predict testdata(i.e. testdf ) based on bestmodel
+
+ypred=predict(bestmodel,testdf)
+ypred
+table(pred=ypred,truth=testdf$y)
+
+
+# look only at agreement vs. non-agreement
+# construct a vector of TRUE/FALSE indicating correct/incorrect predictions
+agreement <- ypred == testdf$y
+table(agreement)
+prop.table(table(agreement))
+
+
+
+##-------------- Improving model performance -----
+
+classifier_rbf <- ksvm(y ~ ., data = testdf, kernel = "rbfdot")
+predictions_rbf <- predict(classifier_rbf, testdf)
+predictions_rbf
+
+
+agreement_rbf <- predictions_rbf == testdf$y
+table(agreement_rbf)
+prop.table(table(agreement_rbf))
+
+
+
+####-------------------------- RADIAL KERNAL ( play with gamma and cost)  ------------------
+
+# -----------Generate random Data----------
+
+set.seed(33)
+x<-matrix(rnorm(400),ncol=2)
+x[1:100,]=x[1:100,]+2
+x[101:150,]=x[101:150,]-2
+
+y=c(rep(1,150),rep(2,50))
+dat= data.frame(x=x,y=as.factor(y))
+
+plot(x,col=y)
+
+# ----------- Training Model on data --------
+
+train = sample(200,100)
+train
+svmfit1<-svm(y~.,data=dat[train,],kernal="radial",gamma=1,cost=100000)
+svmfit1
+
+plot(svmfit1,dat[train,])
+
+#------------- Cross Validation to set best choice of gamma and cost
+
+tune.out= tune(svm,y~.,data=dat[train,],kernal="radial",ranges=list(cost=c(0.1,10,100,1000)),gamma=c(0.5,1,2,3,4))
+summary(tune.out)
+
+bestmodel1<-tune.out$best.model
+bestmodel1
+
+plot(bestmodel1,dat[train,])
+test=-train
+train
+
+ #  Prediction Error Comparison between Linear Regression and SVM  #
+
+
+# Plot the data
+plot(svm.data, pch=16)
+
+# Create a linear regression model
+lr_model <- lm(Y ~ X, svm.data)
+
+# Add the fitted line
+abline(lr_model)
+
+# make a prediction for each X
+predictedY <- predict(lr_model, svm.data)
+
+# display the predictions
+points(svm.data$X, predictedY, col = "blue", pch=4)
+
+# Function to find the Error
+rmse <- function(error)     
+{
+  sqrt(mean(error^2))
+}
+error <- lr_model$residuals         # same as data$Y - predictedY
+predictionRMSE <- rmse(error)
+predictionRMSE
+
+
+                            # Support Vector Machine(Finding root mean square error)
+
+
+
+# Create Support Vector Model
+svm_model <- svm(Y ~ X , svm.data)
+
+# make a prediction for each X
+predictedY1 <- predict(svm_model, svm.data)
+
+# display the predictions
+points(svm.data$X, predictedY1, col = "red", pch=4)
+
+# Function to find the Error
+error <- svm.data$Y - predictedY1
+svrPredictionRMSE <- rmse(error) 
+
+tuneResult <- tune(svm, Y ~ X,  data = svm.data,ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:9)))
+print(tuneResult)
+svrPredictionRMSE
+```
+
+
+# Assingment
+
+
+* Go to the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/) and find a dataset for supervised classification. Every student MUST use a different dataset so you MUST get approved for which you can going to use. This can be the same dataset you used for the unsupervised clustering as long as the data has some labeled data.  
+
+* Classify your data using Support Vector Machines. You can use any method/package for SVMs. Answer the following questions:
+    * How well does the classifier perform?
+    * Try different kernels. How do they effect its performce?    
+    * What might improve its performce?
+
+
+# Resources   
+
+
+* [What are Kernels in Machine Learning and SVM?](https://www.quora.com/What-are-Kernels-in-Machine-Learning-and-SVM/answer/Nikhil-Garg)
+
+* [Computing and visualizing LDA in R](https://tgmstat.wordpress.com/2014/01/15/computing-and-visualizing-lda-in-r/)
+
+* [Computing and visualizing LDA in R](http://www.r-bloggers.com/computing-and-visualizing-lda-in-r/)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

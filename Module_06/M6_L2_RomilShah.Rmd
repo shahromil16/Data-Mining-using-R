@@ -1,0 +1,107 @@
+---
+title: "M6_L2_RomilShah"
+author: "Romil Shah"
+date: "July 8, 2016"
+output: word_document
+---
+
+## Read Data and additional packages
+
+```{r}
+require(ggplot2)
+require(C50)
+require(gmodels)
+require(rpart)
+require(rattle)
+require(RColorBrewer)
+require(tree)
+require(party)
+
+#Chess (King-Rook vs. King-Pawn) Data Set
+
+data_url <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/chess/king-rook-vs-king-pawn/kr-vs-kp.data'
+chess <- read.csv(url(data_url))
+chess <- chess[]
+head(chess)
+str(chess)
+table(chess$f)
+
+#Random sample
+set.seed(12345)
+chess_rand <- chess[order(runif(3195)), ]
+
+#Comparing samples
+summary(chess$won)
+summary(chess_rand$won)
+
+head(chess$won)
+head(chess_rand$won)
+
+chess_train <- chess_rand[1:3000,-38]
+chess_test <- chess_rand[3001:3195, ]
+
+prop.table(table(chess_train$f))
+prop.table(table(chess_test$f))
+
+#Training data
+model <- C5.0(chess_train[-1], chess_train$f)
+model
+
+summary(model)
+
+chess_type_pred <- predict(model, chess_test)
+
+CrossTable(chess_test$f, chess_type_pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual type', 'predicted type'))
+
+formula <- f ~ f.1+f.2+f.3+f.4+f.5+f.6+f.7+f.8+f.9+f.10+f.11+l+f.12+n+f.13+f.14+t+f.15+f.16+f.17+f.18+f.19+f.20+f.21+t.1+f.22+f.23+f.24+f.25+f.26+f.27+f.28+t.2+t.3+n.1+won
+
+fit <- rpart(formula, method="class", data=chess_train)
+printcp(fit)
+plotcp(fit)
+summary(fit)
+
+#Grow tree
+fit <- rpart(formula, method="anova",data=chess_train)
+printcp(fit)
+plotcp(fit)
+summary(fit)
+
+#Additional Plots
+par(mfrow=c(1,2))
+rsq.rpart(fit)
+
+plot(fit,uniform=TRUE, ain = "Regression Tree for 'f' ")
+text(fit,use.n=TRUE,all=TRUE,cex=0.8)
+
+plot(fit,uniform=T,main="Classification Tree for 'f' moves in chess")
+text(fit,use.n=TRUE,all=TRUE,cex=0.8)
+
+tr <- tree(formula,data=chess_train)
+summary(tr)
+plot(tr)
+text(tr)
+
+ct = ctree(formula,data=chess_train)
+plot(ct,main="Classification Inference Tree")
+tr.pred = predict(ct,newdata=chess_train, type = "prob")
+table(predict(ct), chess_train$f)
+          
+```
+
+
+## Answers:
+
+####A(1)
+Yes. The size of the data helps in distributing the training and testing data. More the data, it is better in prediction and thus lesser is the error rate. I tried with subsetting the chess data from 3195 to 300 data rows only. The error rate in prediction was higher than that for 3195 data. The observation suggests that model accuracy improves upto certain extent with increase in data size.
+
+####A(2)
+Yes. The rules make clear sense. This is because the important moves in the game have been recorded in the formula along with the outcome if it is a 'win' or a 'nowin'. Hence the rules help in making a proper decision for the move that is to be played. 
+This function guides which rules are important by how much margin.
+```{r}
+asRules(fit)
+```
+The rules 'n' and 'f.10' play a significant role in the decision tree.
+The algorithm generates good rules in order to fit the data based upon the formula and reduce the error in prediction.
+
+####A(3)
+Decision trees geenrally do not require scaling or normalization. THe same is the case with normalization. Scaling and normalization do not affect decision tree algorithms because they are categorical based.

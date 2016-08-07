@@ -1,0 +1,154 @@
+---
+title: "M6_L3_RomilShah"
+author: "Romil Shah"
+date: "July 8, 2016"
+output: word_document
+---
+
+## Read Data and additional packages
+
+```{r}
+require(ggplot2)
+require(e1071)
+require(kernlab)
+
+# Haberman's survival
+data_url <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/haberman/haberman.data'
+dataframe <- read.csv(url(data_url), sep=",", header = TRUE)
+temp=dataframe
+temp$X1.1<-NULL
+temp$X30<-NULL
+x<-temp
+temp=dataframe
+y<-dataframe$X1.1
+dataframe<-data.frame(x=x,y=as.factor(y))
+plot(x,col=(3-y))
+
+# Training of model
+svm.fit<- svm(y~.,data=dataframe, kernal="linear",cost=10,scale=FALSE)
+plot(svm.fit,dataframe)
+summary(svm.fit)
+
+# Changing cost
+svm.fit1<- svm(y~.,data=dataframe, kernal="linear",cost=0.1,scale=FALSE)
+plot(svm.fit1,dataframe)
+tune.out<- tune(svm,y~.,data=dataframe,kernal="linear",ranges=list(cost=c(0.001,0.01,0.1,1,5,10,100)))
+bestmodel<-tune.out$best.model
+summary(bestmodel)
+
+# Predict test dataframe
+testdf <- dataframe[1:25,]
+testdf
+ypred=predict(bestmodel,testdf)
+ypred
+table(pred=ypred,truth=testdf$y)
+agreement<-ypred==testdf$y
+table(agreement)
+prop.table(table(agreement))
+
+# Improve model performance 
+classifier_rbf<-ksvm(y~.,data=testdf,kernel="rbfdot")
+predictions_rbf<-predict(classifier_rbf,testdf)
+predictions_rbf
+agreement_rbf<-predictions_rbf==testdf$y
+table(agreement_rbf)
+prop.table(table(agreement_rbf))
+
+# Radial Kernal
+svmfit1<-svm(y~.,data=dataframe,kernal="radial",gamma=1,cost=10000)
+svmfit1
+plot(svmfit1,dataframe)
+
+# Train model
+tune.out= tune(svm,y~.,data=dataframe,kernal="radial",ranges=list(cost=c(0.1,10,100,1000)),gamma=c(0.5,1,2,3,4))
+summary(tune.out)
+bestmodel1<-tune.out$best.model
+bestmodel1
+plot(bestmodel1,dataframe)
+
+# Predict test dataframe
+testdf <- dataframe[1:25,]
+testdf
+ypred=predict(bestmodel1,testdf)
+ypred
+table(pred=ypred,truth=testdf$y)
+agreement_radial<-ypred==testdf$y
+table(agreement_radial)
+prop.table(table(agreement_radial))
+
+# Improve model performance 
+classifier_radial_rbf<-ksvm(y~.,data=testdf,kernel="rbfdot")
+predictions_radial_rbf<-predict(classifier_radial_rbf,testdf)
+predictions_radial_rbf
+agreement_radial_rbf<-predictions_radial_rbf==testdf$y
+table(agreement_radial_rbf)
+prop.table(table(agreement_radial_rbf))
+
+# Polynomial Kernal
+svmfit2<-svm(y~.,data=dataframe,kernal="polynomial",gamma=1,cost=10000)
+svmfit2
+plot(svmfit2,dataframe)
+
+# Train model
+tune.out= tune(svm,y~.,data=dataframe,kernal="polynomial",ranges=list(cost=c(0.1,10,100,1000)),gamma=c(0.5,1,2,3,4))
+summary(tune.out)
+bestmodel2<-tune.out$best.model
+bestmodel2
+plot(bestmodel2,dataframe)
+
+# Predict test dataframe
+testdf <- dataframe[1:25,]
+testdf
+ypred=predict(bestmodel2,testdf)
+ypred
+table(pred=ypred,truth=testdf$y)
+agreement_poly<-ypred==testdf$y
+table(agreement_poly)
+prop.table(table(agreement_poly))
+
+# Improve model performance 
+classifier_poly_rbf<-ksvm(y~.,data=testdf,kernel="rbfdot")
+predictions_poly_rbf<-predict(classifier_poly_rbf,testdf)
+predictions_poly_rbf
+agreement_poly_rbf<-predictions_poly_rbf==testdf$y
+table(agreement_poly_rbf)
+prop.table(table(agreement_poly_rbf))
+```
+
+
+## Answers:
+
+####A(1)
+The linear classifier has the efficiency of true and false is as follows:
+```{r}
+prop.table(table(agreement))
+```
+The radial classifier has the efficiency of true and false is as follows:
+```{r}
+prop.table(table(agreement_radial))
+```
+It is seen that they are quite similar in the output. Thus for this database, the classifiers perform pretty well with over 0.88 TRUE and 0.12 FALSE for both linear and radial kernal. By changing cost and gamma, the best models give the efficiency of 0.92 TRUE and 0.08 FLASE asnd hence increases the TRUE values. 
+```{r}
+prop.table(table(agreement))
+prop.table(table(agreement_radial))
+```
+
+####A(2)
+Trying different kernals including linear, radial and polynomial and found that there is no change in the performance. All the kernals perform in the same way for this particular dataset. In terms of svm models, the linear model gives a clear and distinct graph in comaprison to that of polynomial and radial. Polynomial and radial have the same plot for the svm classifier and they are more spread out compared to linear.
+```{r}
+#Linear Plot
+plot(svm.fit,dataframe)
+
+#Radial Plot
+plot(svmfit1,dataframe)
+
+#Polynomial Plot
+plot(svmfit2,dataframe)
+```
+
+####A(3)
+Increasing the sample size and bringing in more data would improve the performance of the svm classifier. Also using ksvm with kernal 'rbfdot' will improve the performance. It is clearly seen that it does improve the performace from 0.88 TRUE to 0.92 TRUE thus by 4%.
+```{r}
+prop.table(table(agreement_rbf))
+prop.table(table(agreement_radial_rbf))
+```
