@@ -1,0 +1,101 @@
+---
+title: "Module_02 Solution"
+author: "Romil Shah"
+date: "05-31-2016"
+output: word_document
+---
+
+###Load twitter data and needed additional packages
+
+```{r}
+require(ggplot2)
+require(reshape2)
+require(car)
+require(lmtest)
+```
+
+```{r}
+twitter<-read.csv("C:/Users/rams1/Desktop/DSCS6030/Module_02/M01_quasi_twitter.csv")
+```
+
+###1. A Relation Between followers_count & gender:
+```{r}
+lmfromRMD <- lm(followers_count ~ as.numeric(gender), data=twitter)
+summary(lmfromRMD)
+qplot(gender, followers_count,data=twitter) + geom_smooth(method=lm,se=FALSE) + ylab("Followers Count") + xlab("Gender")
+plot(lmfromRMD)
+```
+The relationship is not significant and is violated. This is because gender is a binary variable, thus a logistic regression model would be used. This relation has no connection.
+
+###2. A Relation between dob_year & statuses_count:
+```{r}
+qplot(statuses_count, dob_year, data=twitter) +geom_smooth(method=lm, se=FALSE)
+
+lm_scount_dobyear1<-lm(statuses_count~ dob_year, data=twitter)
+lm_scount_dobyear2<-lm(dob_year ~ statuses_count, data=twitter)
+summary(lm_scount_dobyear1)
+summary(lm_scount_dobyear2)
+
+```
+Both do not look good, with either poor p-values or almost 0 slopes. Thus the relation is not siginficant. Here as the data is skewed transformation can provide some relationship.
+
+###A significant linear model of your choosing:
+Test the relationship between wage and height
+
+```{r}
+new <- na.omit(twitter)
+new $ gender_F [new $ gender == "female"] <- 1
+new $ gender_F [new $ gender == "male"] <- 0
+
+head(new[,c("gender", "gender_F", "friends_count")])
+
+summary(new$height)
+qplot(height, data=new)
+```
+
+Proceeding with regression analysis to study more about the relationship.
+Height predictor variable: (x)
+Wage outcome variable: (y)
+
+```{r}
+lm.w <- lm(wage ~ height, data=new)
+summary(lm.w)
+```
+
+1) Is the relationship significant?
+  
+1 unit increase in height corresponds to 0.285 increase in wage. The p-value for the beta coefficient for height variable is less than 0.001 at 0.001 level of significance. Thus alternate hypothesis is considered. And thus the relationship is signinificant.
+
+2) Are any model assumptions violated?
+   
+```{r}
+par(mfrow=c(2,2))
+plot(lm.w)
+```
+
+*The residuals vs fitted plot shows that the residuals are not evenly distributed on both sides of the horizonal line with higher concentration of residuals scattered above zero. Thus the constant variance might be violated.  
+ 
+*Normal-QQ plot shows that the residuals drift away from the dash line towards the end, which indicates a skewed distribution. Therefore, normality is violated.
+
+*The Scale-Location plot shows a violation of homoscedasticity.
+
+*The residuals vs leverage plot shows that the red smooth line stays close to the horizontal gray dashed line and there are no obvious influential points. 
+
+3) Is there any multi-colinearity in multivariate models?
+
+df <- data.frame(a = twitter$age, r = as.numeric(twitter$race), h = twitter$height, ed = twitter$education, ex = twitter$experience)
+cor(df)
+
+Thus it is seen that in this case there does not exist a multi-colinearity in multivariate models.
+
+4) In in multivariate models are predictor variables independent of all the other predictor variables?
+
+In a multivariate model, the dependence or independence is guided by the model test through regression. The variables whose effect is assumed to exist on others are called independent variables and the ones which have the effect are dependent. But mostly the dependent variables could well serve as independent variables in multivariate analysis.
+
+5) In multivariate models rank the most significant predictor variables and exclude insignificant one from the model.
+
+As per the analysis, the wage and height have a good prediction ability.
+   
+6) Does the model make sense?
+
+The regression analysis suggests a positive linear relationship between height and wage, i.e. with more height the person is linkely to earn more. THe gender variable too might be acting as an indirect relation. As men tend to be taller than women thus the wages are higher.

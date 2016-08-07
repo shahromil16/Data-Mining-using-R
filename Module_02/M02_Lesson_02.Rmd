@@ -1,0 +1,622 @@
+---
+title: "Linear Models. Inference and Interpretation"
+author: "Nik Bear Brown"
+output: 
+  html_document: 
+    toc: yes
+---
+
+In this lesson we will build and interpreting simple models with linear regression. We then learn to interpret the diagnostics and quality of our models. We expand our modeling tool box with multivariate analysis.  We finish by using logistic regression to predict probabilities and categories.
+.
+
+Rationale: A model is a representation of reality albeit highly simplified. Building a statistical model involves constructing a mathematical description of some real-world phenomena that accounts for the uncertainty and randomness involved in that system.  All statistical hypothesis tests and all statistical estimators are derived from statistical models. Statistical models are a fundamental part of the foundation of statistical inference, data analysis and machine learning.
+
+
+## Additional packages needed
+ 
+To run the code in M02_Lesson_02.Rmd you may need additional packages.
+
+* If necessary install `ggplot2` package.
+
+`install.packages("ggplot2"); 
+
+
+```{r}
+require(ggplot2)
+```
+
+
+## Data
+
+We will be using [Francis Galton's](https://en.wikipedia.org/wiki/Francis_Galton) analysis of the heights of sons and fathers. Heights of sons of both tall and short fathers appeared to “revert” or “regress” to the mean of the group.  
+
+![image Francis Galton 1850s](http://nikbearbrown.com/YouTube/MachineLearning/M02/Francis_Galton_1850s.jpg)  
+_Francis Galton 1850s_   
+  
+Galton created the statistical concept of correlation and widely promoted regression toward the mean. Regression toward the mean become analysis be [Regression analysis Wikipedia](https://en.wikipedia.org/wiki/Regression_analysis))  
+Feel free to tweet questions to [@NikBearBrown](https://twitter.com/NikBearBrown)  
+
+```{r data}
+# Load our data
+
+data_url <- 'http://nikbearbrown.com/YouTube/MachineLearning/M02/Galton_heights_sons_and_fathers.csv'
+galton <- read.csv(url(data_url))
+
+```
+
+
+## The Modeling process  
+
+A. Formula (i.e. what $f(x)$ amd which $x_1,x_2, .. x_n$)
+B. Fit (i.e. Estimate the unknown parameters for the model.)
+C. Analysis of fit (i.e. how good is the model)
+
+We often create many models so we *_store & explore_*. That is, make models and save them as variables so we can compare the various iterations of the modeling process.
+
+
+## A. Formula 
+
+f(x)          | x    
+------------- | -------------  
+response      | ~ predictor     
+response      | ~ explanatory   
+dependent     | ~ independent    
+outcome       | ~ predictor  
+forecast      | ~ predictor   
+regressand    | ~ regressor  
+explained     | ~ explanatory  
+
+
+```{r}
+head(galton)
+str(galton)
+names(galton)
+```
+
+Galton's Regression to the Mean idea:
+
+Tall fathers will have tall sons, but the height of the sons will be closer to the mean of the current adult male population. The same holds for short fathers and their short sons who, nevertheless, tend to be more average than their father.
+
+In other words, an exceptionally tall person, say 7 feet, would expect to have tall children but not necessarily 7 feet ) as this is exceptional for normally distibuted data). Contrawise,  an exceptionally short person, say 5 feet, would expect to have short children but not necessarily 5 feet ) as this is exceptional for normally distibuted data).
+
+
+```{r}
+qplot(Father,Height,data=galton,color=Gender) + geom_smooth(method=lm,se=FALSE) + ylab("Height Children") + xlab("Father's Height")
+qplot(Mother,Height,data=galton,color=Gender) + geom_smooth(method=lm,se=FALSE) + ylab("Height Children") + xlab("Mother's Height")
+sons<-subset(galton, Gender=="M", select=c(Height,Father,Mother))
+```
+xxx
+
+It seems that, in general, if the father is taller the child is taller. Also  if the mother is taller the child is taller.
+
+$$ f(x) = \beta_0 + \beta_1 x + \varepsilon . $$
+
+Eyeballing both slopes $\beta_1$ look roughly equal and about 0.4. So we'd expect from this graph a relation (i.e. formula or model) for the son's height.
+
+$$ son = \beta_{0_son} + 0.4 x + \varepsilon $$  
+
+and for the daughter's height.
+
+$$ daughter = \beta_{0_daughter} + 0.4 x + \varepsilon $$  
+
+Choosing predictors is typically done in 3 ways:  
+
+1. Theory / domain knowledge
+2. EDA - exploritory data analysis.
+3. Fitting various combinations of outcome and predictors and selecting the best fits (r.g. Stepwise regression)
+
+Here Galton was testing an idea/theory. How dependent is a son's height on his father's height? Domain knowledge would also ask how dependent is a son's height on his mother's height? (I'm not sure is Dalton asked this question or not. We will ask this as well as whether tall mother's and father's tend to have even taller children (i.e. multivariate regression))
+
+
+```{r}
+galton$MF<-((galton$Mother+galton$Father)/2.0)
+head(galton)
+qplot(MF,Height,data=galton,color=Gender) + geom_smooth(method=lm,se=FALSE) + ylab("Height Children") + xlab("Mean Father's & Mother's Height")
+```
+
+The slope looks a little steeper than with either the father's or mother's heights alone. Roughly the equations below:
+
+$$ son = \beta_{0_son} + 0.5 x + \varepsilon $$  
+
+and   
+
+$$ daughter = \beta_{0_daughter} + 0.5 x + \varepsilon $$  
+
+Let's work with just the son's height's (as Galton did)
+
+```{r}
+sons<-subset(galton, Gender=="M", select=c(Height,Father,Mother,MF,Kids))
+qplot(Father,Height,data=sons, color=MF) + geom_smooth(method=lm)  + ylab("Son's Height") + xlab("Father's Height")
+qplot(Father,Height,data=sons, position = "jitter", color=MF) + geom_smooth(method=lm)  + ylab("Son's Height") + xlab("Father's Height")
+qplot(Mother,Height,data=sons, position = "jitter", color=MF) + geom_smooth(method=lm)  + ylab("Son's Height") + xlab("Mother's Height")
+head(sons)
+```
+
+## R's lm() function
+
+_Description_  
+
+lm is used to fit linear models. It can be used to carry out regression, single stratum analysis of variance and analysis of covariance (although aov may provide a more convenient interface for these).  
+
+_Usage_    
+
+lm(formula, data, subset, weights, na.action,
+   method = "qr", model = TRUE, x = FALSE, y = FALSE, qr = TRUE,
+   singular.ok = TRUE, contrasts = NULL, offset, ...)  
+   
+_Model Syntax in R_
+
+* fx ~ x
+* y ~ x
+
+e.g. Height ~ Father or Height ~ Mother  
+
+and for multivariate models  
+
+* fx ~ x1 + x2
+
+e.g. Height ~ Father + Mother
+
+Note that many, many models in R use this syntax
+
+* m1 <- lm(Income ~ Father + Mother, data=sons)
+* m2 <- lm(Income ~ Father + Mother,data=sons)
+* m3 <- aov(Income ~ Father,data=sons)
+
+  
+```{r}
+m_sons_fathers<-lm(Height ~ Father,data=sons)
+m_sons_fathers 
+
+```
+
+Which translates in to the equations below:
+
+$$ son_{height} = 38.2589 + 0.4477 x_{father} + \varepsilon $$  
+
+
+## P-value, t-statistic and standard error
+
+```{r}
+summary(m_sons_fathers) 
+```
+
+
+
+The t-statistic is the coefficient divided by its standard error. For example, a $\beta_1$ of 38.2 divided by a standard error of 3.4 would give a t value of 11.2.
+
+The standard error is an estimate of the standard deviation of the coefficient. It can be thought of as the spread between fitted and actual values.
+
+$$s_e=\sqrt{\frac{1}{N-2}\sum_{i=1}^{N}{e_i^2}}.$$
+
+
+If a coefficient is large compared to its standard error, then we can reject the hypothesis that $\beta_1$ = 0. Intuitively we can think of this if the slope is not small and there is a not much spread between fitted and actual values then we can be confident that the true slope $\hat{\beta}_1$ is not 0.
+
+A t-statistic (t value) of greater than 2 in magnitude, corresponds to p-values less than 0.05.
+
+The p-value is a function of the observed sample results (a statistic) that is used for testing a statistical hypothesis. Before the test is performed, a threshold value is chosen, called the significance level of the test, traditionally 5% or 1% and denoted as $\alpha$.  
+
+If the p-value is equal to or smaller than the significance level ($\alpha$), it suggests that the observed data are inconsistent with the assumption that the null hypothesis is true and thus that hypothesis must be rejected (but this does not automatically mean the alternative hypothesis can be accepted as true). When the p-value is calculated correctly, such a test is guaranteed to control the Type I error rate to be no greater than $\alpha$.
+
+from [P-value](https://en.wikipedia.org/wiki/P-value)
+
+
+
+## Mothers,Mean(Father,Mother) and Kids as predictors
+
+Of course a son's height could be effected by the mothers height.  We can also model questions like do families have taller kids as they get better at it (i.e. have more kids).
+
+```{r}
+m_sons_mothers<-lm(Height ~ Mother,data=sons)
+summary(m_sons_mothers) 
+m_sons_mfs<-lm(Height ~ MF,data=sons)
+summary(m_sons_mfs) 
+m_sons_kids<-lm(Height ~ Kids,data=sons)
+summary(m_sons_kids) 
+```
+
+So our model equations are below:
+
+
+$$ son_{height} = 38.2589 + 0.4477 x_{father} + \varepsilon $$  
+
+$$ son_{height} = 45.11877 + 0.37669 x_{mother} + \varepsilon $$  
+
+$$ son_{height} = 19.67152 + 0.74425 x_{mother-father} + \varepsilon $$  
+
+$$ son_{height} = 69.8973 + -0.1119  x_{kids} + \varepsilon $$  
+
+or rounded
+
+$$ son_{height} = 38 + 0.45 x_{father} + \varepsilon $$  
+
+$$ son_{height} = 45 + 0.38 x_{mother} + \varepsilon $$  
+
+$$ son_{height} = 20 + 0.74 x_{mother-father} + \varepsilon $$  
+
+$$ son_{height} = 70 + -0.11  x_{kids} + \varepsilon $$  
+
+Note that we can estimate $\varepsilon $ variance in the data.  
+
+```{r}
+sd(sons$Height)
+```
+
+So if we wanted to predict a sons heights based on the fathers, $ son_{height} = 38 + 0.45 x_{father} \pm 2.6 $ and the fathers height is 77 inches the we'd expect 67% of his chidlern to be 72.65 $\pm$ 2.6 inches (i.e. $\pm$ 1 SD).
+
+## Does both the Mothers and fathers heights matter?
+
+The mean father's & mother's height seems to have  more of an effect than either the father's or mother's  height.  The slope of 0.74 is nearly the slope of the father's 0.45 and mother's 0.38 combined.
+
+```{r}
+summary(m_sons_fathers) 
+summary(m_sons_mothers) 
+summary(m_sons_mfs) 
+```
+
+
+## Do kids get taller as a couple has more?
+
+The p-value and t-statistic and common sense tell us that we don't get "better" at making taller kids. In fact, very large families tend to be smaller (maybe due to malnutrition in very large families?)
+
+```{r}
+summary(m_sons_kids)
+qplot(Kids,Height,data=sons) + geom_smooth(method=lm,se=FALSE) + ylab("Height Children") + xlab("Number of Kids")
+```
+
+
+## Analysis of variance (ANOVA)
+
+Analysis of variance (ANOVA) is a collection of statistical models used to analyze the differences among group means and their associated procedures (such as "variation" among and between groups), developed by statistician and evolutionary biologist Ronald Fisher.
+
+- from [Analysis of variance](https://en.wikipedia.org/wiki/Analysis_of_variance)
+
+R's anova() function returns a p-value and a F-statistic (which is like a t-statistic)  
+
+
+_F-statistic_
+
+An [F-test](https://en.wikipedia.org/wiki/F-test) is any statistical test in which the test statistic has an F-distribution under the null hypothesis. Like a t-statistic, or a p-value it provides an estimate of whether one should accept or reject the null hypothesis. The F-test is sensitive to non-normality (as is a t-statistic) but is appropriate under the assumptions of normality and [homoscedasticity](https://en.wikipedia.org/wiki/Homoscedasticity).
+
+
+```{r}
+anova(m_sons_fathers) 
+anova(m_sons_mothers) 
+anova(m_sons_mfs)
+anova(m_sons_kids) 
+```
+
+A common use of ANOVA in simple regression to compare two or more models. Does the p-value or F-statistic improve or not?  
+
+```{r}
+anova(m_sons_fathers,m_sons_mfs) 
+anova(m_sons_mothers,m_sons_mfs) 
+anova(m_sons_fathers,m_sons_mothers,m_sons_mfs) 
+anova(m_sons_mfs,m_sons_kids) 
+anova(m_sons_fathers,m_sons_mothers,m_sons_mfs,m_sons_kids) 
+```
+
+Alternatively one can just check if the the residual sum of squares (RSS) improves (goes down) between two models.  
+
+## Residual Plots
+
+The error term $\varepsilon_i$ has the following assumptions:
+
+* have mean zero; otherwise the forecasts will be systematically biased.
+* statistical independence of the errors (in particular, no correlation between consecutive errors in the case of time series data).
+* homoscedasticity (constant variance) of the errors.
+* normality of the error distribution.  
+
+The typical plots are:
+
+* _Residuls vs Fitted_  
+
+the residuals and the fitted values should be uncorrelated in a [homoscedastic](https://en.wikipedia.org/wiki/Homoscedasticity) linear model with normally distributed errors. There should not be a dependency between the residuals and the fitted values,  
+
+* _Residuls vs Normal_  
+
+This is a [Q–Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot) to check if the residuls are normal (i.e. normality of the error distribution.)    
+
+* _Standardized Residuls vs Fitted Values_  
+
+[standardized residuals](https://en.wikipedia.org/wiki/Studentized_residual) means every residual plot you look at with any model is on the same standardized y-axis. This makes it easier to compare many residul plots. This process is also called *studentizing* (after [William Sealey Gosset](https://en.wikipedia.org/wiki/William_Sealy_Gosset), who wrote under the pseudonym Student).
+
+The key reason for studentizing is that, in regression analysis of a multivariate distribution, the variances of the residuals at different input variable values may differ, even if the variances of the errors at these different input variable values are equal. 
+
+* _Residuls vs Leverage_  
+
+We use leverage to check for outliers. To understand [leverage](https://en.wikipedia.org/wiki/Leverage_%28statistics%29), recognize that simple linear regression fits a line that will pass through the center of your data. High-leverage points are those observations, if any, made at extreme or outlying values of the independent variables such that the lack of neighboring observations means that the fitted regression model will pass close to that particular observation. 
+
+To think of the leverage of a point consider how the slope might change if the model were fit without the data point in question. A common way to estimate of the influence of a data point is [Cook's distance or Cook's D](https://en.wikipedia.org/wiki/Cook%27s_distance)
+
+$$ D_i = \frac{\sum_{j = 1}^n (\hat{y}_{j(i)} - \hat{y}_j)^2}{2S^2} $$
+
+where $\hat{y}_{j(i)}$ is the $j^{th}$ fitted value based on the fit with the $i^{th}$ point removed. ${S^2} $is the [Mean squared error](https://en.wikipedia.org/wiki/Mean_squared_error) 
+
+An alternate form of Cook's distance:
+
+$$ D_i = \frac{r_i^2}{2} \frac{h_{ii}}{1 - h_{ii}} $$
+
+To be influential a point must:
+
+Have high leverage $h_{ii}$ and
+Have a high standardized residual $r_i$
+
+Analyists often look for and remove high leverage points and re-fit a model.
+
+```{r}
+head(lm.influence(m_sons_mothers))
+head(cooks.distance(m_sons_mothers))
+```
+
+
+Generating the residual plots can by done by passing the model to the plot function, plot(model) 
+
+```{r}
+plot(m_sons_fathers) 
+plot(m_sons_mothers) 
+plot(m_sons_mfs)
+plot(m_sons_kids) 
+```
+
+
+## ggplot for Residual Plots
+
+Sometimes we want to make prettier, more detailed or alternate residual plots. It is easy to get data from out model object for plotting.
+
+
+```{r}
+names(m_sons_mfs)
+```
+
+There are functions to extract data from model objects, which can be used to pass data to ggplot2. For example, 
+
+* predict(m_sons_mfs)
+* resid(m_sons_mfs)
+* coef(m_sons_mfs)
+* lm.influence(m_sons_mothers)
+* cooks.distance(m_sons_mothers)
+
+```{r}
+qplot(predict(m_sons_mfs),resid(m_sons_mfs)) + geom_smooth(method=lm)
+```
+
+The $ syntax can also be used (e.g.  m_sons_mfs$residuals)  to pass data to ggplot2.
+
+```{r}
+qplot(x,y, data=data.frame(x=residuals(m_sons_fathers),y=predict(m_sons_fathers))) + geom_smooth(method=lm)
+```
+
+## No y-intercept
+
+You can run regression without the constraint of a y-intercept.
+
+```{r}
+m_sons_fathers_no_y<-lm(Height ~ Father - 1,data=sons)  # no y
+m_sons_fathers_no_y
+```
+
+Or use an alternate syntax.
+
+```{r}
+m_sons_fathers_no_y<-lm(Height ~ Father + 0,data=sons)  # no y
+m_sons_fathers_no_y
+```
+
+We can also pass the model formula directly to ggplot2 to visualize the regression line.
+
+```{r}
+p<-qplot(Father,Height,data=sons)
+p+stat_smooth()
+p + stat_smooth(method = "lm")
+p + stat_smooth(method = "lm", formula = y ~ x, se=FALSE)
+p + stat_smooth(method = "lm", formula = y ~ x+0, se=FALSE)
+```
+
+## Multivariate Linear Regression
+
+Multivariate linear regression (also known as *multiple linear regression*) is the extension of a single  predictor variable $x$ to a set predictor variables, {$x_1, x_2, x_2, ... x_n$}, that is
+
+$$ Y = \beta_{1} x_{1} + \beta_{2} x_{2}  + \beta_{3} x_{3}  + \beta_{n} x_{n}  + \varepsilon $$  
+
+these n equations are stacked together and written in vector form as
+
+$$ Y = \beta X  + \varepsilon $$  
+
+Where $Y$, $beta$, and $\varepsilon$ are vectors and $X$ is a matrix  (sometimes called the design matrix).
+
+
+```{r}
+m_sons_fathers_mothers<-lm(Height ~ Father + Mother,data=sons) 
+m_sons_fathers_mothers
+anova(m_sons_fathers_mothers)
+```
+
+## Multiple testing bias
+
+Note that when rejecting the null hypothesis $\beta=0$ at a p-value of 0.05 means the if we try 20 predcitors we would expect 1 to falsly reject the null hypothesis. 
+
+## Interaction Terms in R
+
+
+An *interaction variable* is a variable constructed from an original set of variables to try to represent either all of the interaction present or some part of it. An *interaction variable* models the simultaneous influence of two predictors on a third response variable is not additive. We want to know whether the joint effect is higher than the sum of both effects.
+
+For example, smoking and inhaling asbestos fibers both increase the risk of lung cancer, but exposure to asbestos and smoking multiplies the cancer risk. ere, the joint effect of inhaling asbestos and smoking is higher than the sum of both effects. from [*Relation between exposure to asbestos and smoking jointly and the risk of lung cancer*](http://oem.bmj.com/content/58/3/145)  
+
+
+Simple linear models assume that if a predictor variable affects the outcome variable, it does so in a way that is independent of all the other predictor variables.  
+
+We deal with non-independence of predictors by including interaction terms in our models. Interaction variables introduce an additional level of regression analysis by allowing researchers to explore the synergistic effects of combined predictors.   
+
+Interaction variables can be:
+* interaction between two categorical variables,
+* interaction between one continuous and one categorical variables,
+* and the interaction between two continuous variables.  
+
+```{r}
+g_interaction<-lm(Height ~ Father + Mother + Father:Mother, data=sons)
+g_interaction
+anova(g_interaction)
+```
+
+The same model can be specified with a simplier syntax. 'Father*Mother' is the same as 'Father + Mother + Father:Mother'.
+
+
+```{r}
+g_interaction<-lm(Height ~ Father*Mother, data=sons)
+g_interaction
+anova(g_interaction)
+```
+
+
+The same model can be specified with an exponential syntax as well. 'Father*Mother' is the same as '(Father + Mother)^2'.
+
+
+```{r}
+g_interaction<-lm(Height ~ (Father + Mother)^2, data=sons)
+g_interaction
+anova(g_interaction)
+```
+
+_ higher (nth) order interactions_
+
+The exponential syntax also allows higher order interactions to be specified. 
+```{r}
+g_interaction_3<-lm(Height ~ (Father + Mother + Kids)^3, data=sons)
+g_interaction_3
+anova(g_interaction_3)
+
+```
+
+# Multi-colinearity
+
+In statistics, multicollinearity (also collinearity) is a phenomenon in which two or more predictor variables in a multiple regression model are highly correlated, meaning that one can be linearly predicted from the others with a non-trivial degree of accuracy. In this situation the coefficient estimates of the multiple regression may change erratically in response to small changes in the model or the data. Multicollinearity does not reduce the predictive power or reliability of the model as a whole, at least within the sample data set; it only affects calculations regarding individual predictors. That is, a multiple regression model with correlated predictors can indicate how well the entire bundle of predictors predicts the outcome variable, but it may not give valid results about any individual predictor, or about which predictors are redundant with respect to others.
+
+- from [multicollinearity - Wikipedia](https://en.wikipedia.org/wiki/Multicollinearity)
+
+```{r}
+cor(sons$Height,sons$Father)
+cor(sons$Height,sons$Mother)
+cor(sons$Father,sons$Mother)
+cor(galton$Height,as.numeric(galton$Gender))
+```
+
+## Stepwise regression
+
+Stepwise regression means to iteratively select the best predictor (that improves the model the most), then the next best until we have no predictors that improves the model or use all of the predictors. This is also called forward stepwise selection.
+
+A variant called *backward elimination*, involves starting with all candidate predictors, testing the deletion of each variable using a chosen model comparison criterion, deleting the variable (if any) that improves the model the most by being deleted, and repeating this process until no further improvement is possible.
+
+Bidirectional elimination, a combination of the above, testing at each step for variables to be included or excluded.
+
+
+```{r}
+beg<-lm(Height ~ Father, data=sons)
+end<-lm(Height ~ ., data=sons)
+empty<-lm(Height ~ 1, data=sons)
+bounds<-list(upper=end,lower=empty)
+stepwise_reg<-step(beg,bounds, direction = "forward")
+stepwise_reg
+```
+
+
+# Logistic regression
+
+[Logistic regression](https://en.wikipedia.org/wiki/Logistic_regression), or logit regression, or is a regression model where the outcome variable is categorical. Often this is used when the variable is binary (e.g. yes/no, survived/dead, pass/fail, etc.)
+
+Logistic regression measures the relationship between the categorical response variable and one or more predictor variables by estimating probabilities. 
+ 
+_Can height predict gender?_  
+
+```{r}
+qplot(Gender,Height,data=galton)+geom_boxplot()
+```
+
+Note that logistic regression estimates probabilities. 
+
+```{r}
+set.seed(333)
+require(reshape2)
+norm_plot<-sons[c("Father","Mother")]
+rnd <- melt(data=norm_plot)
+qplot(x=value, data=rnd, geom="density", group=variable, color=variable) + labs(title="Galton father and mother heights", y="Density", x="Height")
+h_normal <-data.frame(Father=rnorm(n=length(sons$Height),mean=mean(sons$Father),sd=sd(sons$Father)),Mother=rnorm(n=length(sons$Height),mean=mean(sons$Mother),sd=sd(sons$Mother)))
+rnd <- melt(data=h_normal)
+qplot(x=value, data=rnd, geom="density", group=variable, color=variable) + labs(title="Simulated Galton father and mother heights", y="Density", x="Height")
+```
+
+Can height predict gender?  
+
+```{r}
+m_gender_logistic<-lm(as.numeric(Gender) ~ Height, data=galton)
+m_gender_logistic
+summary(m_gender_logistic)
+anova(m_gender_logistic)
+qplot(Height,as.numeric(Gender),data=galton) + stat_smooth(method = "lm", formula = y ~ x, se=FALSE)
+```
+
+## Non-linear transformations of predictors
+
+Even if the data is non-linear one might be able to use a tranform so it has a linear form and simple linear regression can be applied.
+
+```{r}
+set.seed(3333)
+# create some random data
+trails<-333
+n<-1:trails
+n2<-n^2
+r_data <-data.frame(A=n,
+                    B=n2,
+                    C=n+rnorm(n=trails,sd=9),
+                    D=n2+rnorm(n=trails,sd=999))
+head(r_data)
+qplot(B,A,data=r_data,main="Simulated Quadratic") + geom_smooth(method=lm,se=FALSE)
+qplot(C,A,data=r_data, main="Simulated Linear Homoscedastic") + geom_smooth(method=lm,se=FALSE)
+qplot(D,A,data=r_data, main="Simulated Quadratic Homoscedastic") + geom_smooth(method=lm,se=FALSE)
+qplot(sqrt(B),A,data=r_data, main="Simulated Quadratic sqrt transform") + geom_smooth(method=lm,se=FALSE)
+qplot(log(B,2),A,data=r_data, main="Simulated Quadratic log transform") + geom_smooth(method=lm,se=FALSE) 
+qplot(sqrt(D),A,data=r_data, main="Simulated Quadratic Homoscedastic sqrt transform") + geom_smooth(method=lm,se=FALSE)
+qplot(log(D,2),A,data=r_data, main="Simulated Quadratic Homoscedastic log transform") + geom_smooth(method=lm,se=FALSE)
+
+```
+
+## Assingment
+
+* Load the file M01_quasi_twitter.csv (it is online at  'http://nikbearbrown.com/YouTube/MachineLearning/M01/M01_quasi_twitter.csv')
+* Generate a linear model for the following:
+    * A relation between followers_count & gender
+    * A relation between dob_year & statuses_count
+    * A significant linear linear model of your choosing.
+    * A multivariate relation between wage & height, race, age, education & experience
+    * A significant logistic linear model of your choosing.    
+Answer the following questions:
+    * Is the relationship significant?
+    * Are any model assumptions violated?
+    * Is there any multi-colinearity in multivariate models?
+    * In in multivariate models are predictor variables independent of all the other predictor variables?
+    * In in multivariate models rank the most significant predictor variables and exclude insignificant one from the model.
+    * Does the model make sense?
+Write up your report as an .Rmd file.
+ 
+## Resources
+
+
+* [Simple Linear Regression | R Tutorial](http://ww2.coastal.edu/kingw/statistics/R-tutorials/simplelinear.html)
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```

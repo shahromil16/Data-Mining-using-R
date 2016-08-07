@@ -1,0 +1,331 @@
+---
+title: "M2_Homework_Assignment_Answers"
+author: "Victor Gomes"
+date: February 10, 2016
+output: word_document
+---
+This homework assignment focuses on linear models, model inference and interpretation
+
+###Load twitter data and needed additional packages
+
+```{r}
+require(ggplot2)
+require(reshape2)
+require(car)
+require(lmtest)
+```
+
+```{r}
+twitter<-read.csv("http://nikbearbrown.com/YouTube/MachineLearning/M01/M01_quasi_twitter.csv")
+```
+
+###Instructions
+* The models to be generated are, as per the Module 02 file:
+    * A relation between followers_count & gender
+    * A relation between dob_year & statuses_count
+    * A significant linear model of your choosing.
+    * A multivariate relation between wage & height, race, age, education & experience
+    * A significant logistic linear model of your choosing.    
+* Then, answer the following questions for each of the models above (questions about multivariate/multi-collinearity only for the multivariate model):
+    * Is the relationship significant?
+    * Are any model assumptions violated?
+    * Is there any multi-colinearity in multivariate models?
+    * In the multivariate models are predictor variables independent of all the other predictor variables?
+    * In the multivariate models rank the most significant predictor variables and exclude insignificant one from the model.
+    * Does the model make sense?
+* Write up your report as an .Rmd file.  
+
+###1. A Relation Between followers_count & gender - as per Kara Sassone's answer:
+```{r}
+lmfromRMD <- lm(followers_count ~ as.numeric(gender), data=twitter)
+summary(lmfromRMD)
+qplot(gender, followers_count,data=twitter) + geom_smooth(method=lm,se=FALSE) + ylab("Followers Count") + xlab("Gender")
+plot(lmfromRMD)
+```
+
+The relationship between followers count and gender is not significant and  model assumptions were violated. Because gender is a binary variable, a logistic regression model would be used. In this case, there is no connection and probability is not defined. In this case, to me, the model does not make sense and would not be one I would consider for further analysis.
+
+###2. Relation between dob_year & statuses_count - as per Samantha Bender's answer (modified):
+I first tried plotting and building a model based on the untransformed data, with either as the predictor, and the other as the response variable.
+
+```{r}
+qplot(statuses_count, dob_year, data=twitter) +geom_smooth(method=lm, se=FALSE)
+
+lm_scount_dobyear1<-lm(statuses_count~ dob_year, data=twitter)
+lm_scount_dobyear2<-lm(dob_year ~ statuses_count, data=twitter)
+summary(lm_scount_dobyear1)
+summary(lm_scount_dobyear2)
+
+```
+
+Both do not look good, with either poor p-values or almost 0 slopes. We can also see from the graph that the data is skewed and can probably benefit from transformation. To try to improve the model, I did a log-transform of the statuses_count data, which is extremely skewed, with very few accounts posting large amounts of statuses. The new plot and linear model can be seen here.
+
+```{r}
+qplot(log(statuses_count), dob_year, data=twitter)+geom_smooth(method=lm, se=FALSE)
+lm_scount_logdobyear<-lm(dob_year ~ log(statuses_count), data=twitter)
+summary(lm_scount_logdobyear)
+```
+The resulting formula is: 
+$$ {statusescount} = 1972.6 + 0.4636x_{dobyear} + \varepsilon $$
+
+The coefficient (1972.6005) is very large compared to its standard error (0.4800), giving us a very large t-value of (4109.532), and a very small p-value. As a result, we have confidence in our ability to reject the null hypothesis that the true slope ($\beta_{1}$) is 0. This means that while we are not positive that the slope and intercept are exactly as reported, but we are confident that the true slope is not zero. We can say that the relationship between dob_year & statuses_count is significant.
+
+I ran anova to compare the transformed and untransformed models created for this relationship:
+```{r}
+anova(lm_scount_dobyear2, lm_scount_logdobyear)
+```
+The transformed statuses_count model is much better.
+
+In this model, there are some potential data quality issues, as it is very unlikely that there are users born in 1900. To clean up the data, I removed values where the year is before 1925, and checked the model again.
+
+```{r}
+over1925<-twitter$dob_year > 1925
+qplot(log(statuses_count), dob_year, data=twitter[over1925,])+geom_smooth(method=lm, se=FALSE)
+
+
+lm_scount_logdobyear_over1925<-lm(dob_year ~ log(statuses_count), data=twitter[over1925,])
+lm_scount_logdobyear_over1925
+summary(lm_scount_logdobyear_over1925)
+outlierTest(lm_scount_logdobyear_over1925)
+```
+The resulting formula is: 
+$$ {statusescount} = 1974.25.6 + 0.4323x_{dobyear} + \varepsilon $$
+and the t-value is 4722.649. The increase in t-value is due to the smaller std. error of this model. While the slope slightly decreased, we also decreased the standard error. 
+
+I then plotted the model to check if any model assumptions are violated.
+
+```{r}
+plot(lm_scount_logdobyear_over1925)
+
+```
+
+In the residuals (vertical distance from a point to the regression line) vs fitted plot, we can see that the red line (smooth curve of the actual residuals) lies fairly close to the dashed grey line. This is good. 
+
+In the Q-Q plot, we see that we have a heavy-tailed distribution, indicating that our distribution is not normal.
+
+In the residuals vs leverage, we can see that there are several points with high leverage. I searched online to find what values are generally considered to be high Cook's values. I found that one convention is to use a threshold of 4/N, or in our case 0.0001825.
+
+I removed points with Cook's values above this point, and fit a new model.
+
+```{r}
+threshold<-4/length(twitter[over1925,]$dob_year)
+distances<-cooks.distance(lm_scount_logdobyear_over1925)
+toremove<-which(distances > threshold)
+
+twitter1925<-twitter[over1925,]
+twitter1925edit<-twitter1925[-toremove,]
+
+lm_logscount_dobyear_over1925_edits<-lm(dob_year ~ log(statuses_count), data=twitter1925edit)
+
+summary(lm_logscount_dobyear_over1925_edits)
+plot(lm_logscount_dobyear_over1925_edits)
+```
+We can see that the model improves slightly, but we are still likely violating the normality assumption.
+
+$$ {statusescount} = 1975 + 0.4955x_{dobyear} + \varepsilon $$
+
+I also ran ANOVA on the relationship, which is considered to be robust in that it tolerates normality violations fairly well, especially large sample sizes.
+```{r}
+anova(lm_scount_logdobyear_over1925)
+```
+
+The anova reiterates that the relationship is significant (p value= 2.371e-16).
+While not perfect, this model makes sense, because younger users tend to be more active than older users.
+
+###3. A significant linear model of your choosing - as per Huai-Chun Chen's answer (modified):
+Test the relationship between wage and height
+
+```{r}
+# remove missing value
+new <- na.omit(twitter)
+# recode the gender variable to 0/1 
+new $ gender_F [new $ gender == "female"] <- 1
+new $ gender_F [new $ gender == "male"] <- 0
+
+head(new[,c("gender", "gender_F", "followers_count")])
+
+summary(new$height)
+qplot(height, data=new)
+```
+
+There doesn't seem to be any outlier for the height variable. Therefore, proceed with regression analysis.
+
+Let height be a predictor variable (x) and wage as an outcome variable (y)
+
+```{r}
+lm.w <- lm(wage ~ height, data=new)
+summary(lm.w)
+```
+
+1) Is the relationship significant?
+  
+ The beta coefficient for the height indicates that one-unit increase in height is associated with about 0.3 units increase in wage. The p-value for the beta coefficient for height variable is less than 0.001 at 0.001 level of significance. We therefore reject the null hypothesis in favor of alternative hypothesis. Ths means the relationship between height and wage is significant. 
+
+2) Are any model assumptions violated?
+   
+```{r}
+par(mfrow=c(2,2))
+plot(lm.w)
+```
+
+* The residuals vs fitted plot shows that the residuals are not evenly distributed on both sides of the horizonal line with higher concentration of residuals scattered above zero. This suggests that the assumption of constant variance might be violated.  
+ 
+* QQ plot shows that the residuals drift away from the dash line, which indicates a skewed distribution. Therefore, the assumption of normality is violated.
+
+* The Scale-Location plot shows a similar pattern as seen in the non-standardized plot that indicates a violation of homoscedasticity.
+
+* The residuals vs leverage plot shows that the red smooth line stays close to the horizontal gray dashed line and there are no obvious influential points. 
+   
+3) Does the model make sense?
+
+The regression analysis suggests a positive linear relationship between height and wage, i.e. the taller a person is, the more he/she earns. It is possible that the effect of height on wage might be through an intervening variable, such as gender. It is known from previous analysis (Lesson 1) that men (generally taller) tend to earn more than women (generally shorter). When we control for the gender variable, the association between height and wage becomes insignificant (as shown in the following analysis). In this sense, the model seems to be reasonable. 
+
+```{r}
+lm.w1 <- lm(wage ~ height + gender_F, data=new)
+summary(lm.w1)
+```
+
+It is worth noting that the summary also indicates a negative coefficient for gender variable, and being a female is associated with $\simeq$ 6.8 units decrease in wage.    
+
+###4. A multivariate relation between wage & height, race, age, education & experience - as per Brandon Irvine's answer(modified):
+Clearly, height, race, and age are best picks for independent variables. Of the remaining variables, education and experience seem better as explanatory than wage, so we'll treat wage as our dependent variable.
+
+We'll focus on the F-statistic to indicate whether any of the independent variables contribute to avoid multiple testing bias.
+```{r,tidy=TRUE}
+wage_as_dep <- lm(data = twitter, formula = wage ~ race + age + height + education + experience)
+anova(wage_as_dep)
+```
+
+#### Is the relationship significant?
+Yes, the F-statistic for the independent variables is strongly significant, so we can reject the null hypothesis that none of them can predict `wage`.
+
+#### Are any model assumptions violated?
+##### mean of the errors equaling zero
+```{r}
+summary(wage_as_dep$residuals)
+```
+Yes, the mean of the residuals is zero, so we have an unbiased estimator.
+
+##### statistical independence of errors
+As this isn't a time series, there's no reason to think the errors aren't statisticall independent.
+
+##### homoscedastiscity of errors
+We use the `bptest()` function from the `lmtest` package.
+```{r}
+bptest(wage_as_dep)
+```
+The null hypothesis is strongly rejected, so we cannot assume homoscedasticity of errors here.
+
+##### normality of error distribution
+```{r}
+ks.test(x=wage_as_dep$residuals,y='pnorm',alternative='two.sided')
+```
+The residuals don't seem to be normally distributed.
+
+A plot shows us that, visually, the residual distribution does look similar to a very steeply curved normal plot around 0, with perhaps a thick tail toward the positive, indicating skew:
+```{r}
+res <- data.frame(residual_values = wage_as_dep$residuals)
+ggplot(data=res,aes(x=residual_values)) +geom_density() + scale_x_continuous(limits = c(-100,100))
+```
+
+####Is there any multi-colinearity?
+With so many potential interactions, it's probably easiest to put the data in a data frame and then ask R to make a table.
+```{r,tidy=TRUE}
+df <- data.frame(a = twitter$age, r = as.numeric(twitter$race), h = twitter$height, ed = twitter$education, ex = twitter$experience)
+cor(df)
+```
+Per Wikipedia, correlations above .4 are suspect, and we don't see anything even approaching that in the (off-diagonal) correlations, so we assume there's no multi-colinearity.
+
+####Are predictor variables independent of all the other predictor variables?
+Yes, they seem to be, given our check for multicolinearity.
+
+####Rank the most significant predictor variables and exclude insignificant ones from the model.
+Testing our independent variables alone, we find, very surprisingly, that only height actually has any signficant predictive ability, and thus is the only one that we would rank.
+
+##### race
+```{r}
+wage_on_race <- lm(data=twitter,formula= wage ~ race)
+summary(wage_on_race)
+```
+Since `arab` is the race missing above, that's been taken as the baseline, and no other race is signficantly different from another, so we can eliminate this as an explanatory variable.
+
+##### age
+```{r}
+wage_on_age <- lm(data=twitter,formula= wage ~ age)
+summary(wage_on_age)
+```
+Maybe surprisingly, age doesn't have a significant predicative value for wage, either.
+
+##### education
+```{r}
+wage_on_education <- lm(data=twitter,formula= wage ~ education)
+summary(wage_on_education)
+```
+Again, surprisingly, education doesn't help us significantly predict wage, either.
+
+##### experience 
+```{r}
+wage_on_experience <- lm(data=twitter,formula= wage ~ experience)
+summary(wage_on_experience)
+```
+Yet again, a variable that intuitively would be very signficant fails to significantly explain wage.
+
+##### height
+```{r}
+wage_on_height <- lm(data=twitter,formula= wage ~ height)
+summary(wage_on_height)
+```
+Incredibly, height is the independent variable that seems to "explain" wage, and would be the only variable we would rank in our list of significant explanatory variables.
+
+#### Does the model make sense?
+No. We have little reason to believe that height itself causes higher wages. There are two explanations for the finding that height significantly predicts wage, either or both of which probably apply.
+
+First, it's possible that to begin with, we regressed too many variables without coming up with a clear alternative hypothesis to test against the null, so we found a false positive. In general, if we test enough variables, we'll inevitably find one that is a false positive. (For example, we might have found that the speed of hair growth for an individual predicts wage significantly if we had measured every biometric statistic we could find.)
+
+Second, our regression of wage on height might suffer from omitted variable bias, where height is just a proxy for some other variable. Since both variables are probably self-reported, it might just be that egocentric users over-report both their height and wage.
+
+Of course, it's possible tall people make more money, but without more evidence, this is more of a puzzle than any kind of explanation.
+
+###5. A Significant Logistic Relationship - as per Dillon Hawley's answer (modified):
+
+The logistic relationship that I am going to explore is between height as a predictor for gender.
+
+#####*Visualize and Clean the Data:*
+
+The first thing to do is to clean the gender and height variables as we have done in the previous sections.
+
+```{r}
+data_cleaned <- twitter[which(is.na(twitter$gender) == FALSE),]
+data_cleaned <- twitter[which(twitter$height > 50),]
+qplot(data_cleaned$height, as.numeric(data_cleaned$gender), main = "Cleaned Data")
+```
+
+#####*Generate the Model:*
+
+```{r}
+m_gender_height <- lm(as.numeric(data_cleaned$gender) ~ data_cleaned$height)
+summary(m_gender_height)
+qplot(y = as.numeric(gender), x = height, data=data_cleaned) + stat_smooth(method = "lm", formula = y ~ x, se=FALSE)
+```
+
+`as.numeric(data_cleaned$gender) = -5.3300696 + 0.0407324*data_cleaned$height`
+
+The slope and intercept terms bothh have a p-value of `2x10^-16^` which is very significant.  This indicates that neither of these values are remotely equal to 0.  Thus, the relationship between height and gender is significant.
+
+#####*Check Model Assumptions:*
+
+```{r}
+plot(m_gender_height)
+```
+
+There are no high leverage points to speak of in the data.  The residuals are normally distributed but they do not vary equally along the fitted values.  This is a violation of the model assumptions, but the significance of the model is a good indicator that it is still a very good model.  The R^2^ term of 0.5669 is als a very good indicator that this is a valid linear relationship.
+
+#####*Evaluate the Model:*
+
+This is a very good model to use in the real world because men are generally taller than women and this is in line with the model created. 
+
+
+
+
+
+
