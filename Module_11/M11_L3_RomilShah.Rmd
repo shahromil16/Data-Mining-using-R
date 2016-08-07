@@ -1,0 +1,43 @@
+---
+title: "M11_L3_RomilShah"
+author: "Romil Shah"
+date: "August 1, 2016"
+output: word_document
+---
+
+```{r}
+library(RCurl)
+library(plyr)
+library(forecast)
+library(tseries)
+
+data <- read.table("C:/Users/rams1/Desktop/DSCS6030/S01R01.txt")
+names(data) <- c("time","ankle1","ankle2","ankle3","ul1","ul2","ul3","ta1","ta2","ta3","labels")
+
+#This data consists of the ankle acceleration, upper leg acceleration and trunk acceleration with different subjects who are either healthy or have parkisons disease. This is a time series data which I am using in my project. Here I am using the information of a parkisons patient where the ankle data will be used to analyse using ARIMA models.
+
+ankles <- count(data, c("ankle1","ankle2","ankle3"))
+
+#Taking first 10000 values for consideration with frequency 2
+ankles_timeseries <- ts(ankles$freq,start = c(1, 1), end = c(10000, 1), frequency = 2)   
+plot(ankles_timeseries, xlab='Time Stamp' ,ylab='Ankle Acceleration', main='Ankle Acceleration')
+
+# plot a correlogram
+acf(ankles_timeseries)
+var(ankles_timeseries)
+pacf(ankles_timeseries)
+
+#Dickey-Fuller for stationarity
+adf.test(ankles_timeseries,alternative="stationary")
+
+#Philips Perron test
+PP.test(ankles_timeseries)
+
+#Trend of the dataset
+anklests.stl = stl(ankles_timeseries, s.window="periodic")
+plot(anklests.stl)
+
+#The above plot shows the trend, seasonality and remainder of the timeseries. In this particular dataset, as there are acceleration values of the ankles and thighs, a trend is observed in the diseased and healthy patients. This helps in the further analysis and classification of the patients as healthy or parkinsons patients based on the trend observed in the data.
+#Using the trend of obtained here, we can classify a future data as far as this dataset is concerned.
+```
+

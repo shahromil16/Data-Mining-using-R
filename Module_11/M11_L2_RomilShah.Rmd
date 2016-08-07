@@ -1,0 +1,75 @@
+---
+title: "M11_L2_RomilShah"
+author: "Romil Shah"
+date: "July 31, 2016"
+output: word_document
+---
+
+```{r}
+library(RCurl)
+library(plyr)
+library(forecast)
+
+#Link to the dataset: https://archive.ics.uci.edu/ml/datasets/Daphnet+Freezing+of+Gait
+
+#This dataset is for Parkinsons patients giving the gait data.
+
+data <- read.table("C:/Users/rams1/Desktop/DSCS6030/S01R01.txt")
+names(data) <- c("time","ankle1","ankle2","ankle3","ul1","ul2","ul3","ta1","ta2","ta3","labels")
+
+#This data consists of the ankle acceleration, upper leg acceleration and trunk acceleration with different subjects who are either healthy or have parkisons disease. This is a time series data which I am using in my project. Here I am using the information of a parkisons patient where the ankle data will be used to analyse using ARIMA models.
+
+ankles <- count(data, c("ankle1","ankle2"))
+
+#Taking first 10000 values for consideration with frequency 2
+ankles_timeseries <- ts(ankles$freq,start = c(1, 1), end = c(10000, 1), frequency = 2)   
+plot(ankles_timeseries, xlab='Time Stamp' ,ylab='Ankle Acceleration', main='Ankle Acceleration')
+
+d <- 0 : 2
+p <- 0 : 4
+q <- 0 : 6
+ankles_models <- expand.grid(d = d, p = p, q = q)
+head(ankles_models, n = 4)
+
+getTSModelAIC <- function(ts_data, p, d, q) {
+                                            ts_model <- arima(ts_data, order = c(p, d, q))
+                                              return(ts_model$aic)
+                                              }
+
+getTSModelAICSafe <- function(ts_data, p, d, q) {  
+                                                 result = tryCatch({
+                                                 getTSModelAIC(ts_data, p, d, q)
+                                                  }, error = function(e) {
+                                                 Inf
+                                                 })
+}
+
+ankles_models$aic <- mapply(function(x, y, z) 
+  getTSModelAICSafe(ankles_timeseries,x, y, z),ankles_models$p,ankles_models$d,ankles_models$q)
+
+subset(ankles_models,aic == min(aic))
+
+ankles_model <- arima(ankles_timeseries, order = c(1, 1, 1))
+summary(ankles_model)
+predictedData <- forecast(ankles_model,1000)
+
+#Thus the future predicted 1000 values can be shown as:
+plot(forecast(ankles_model, 1000))
+
+#Looking at the plots of the predicted data and the actual data, it seems to be coninciding. Thus the arima models provides a best fit for the time series analysis for the dataset used by me. 
+#Thus ARIMA can be used for prediction based on the model generated using the test dataset.
+#The model parameters are as follows:
+predictedData
+
+#Just another way to show the future 1000 predictions with data in the positive as the acceleration values are positive in this particular dataset.
+fit<-arima(ankles_timeseries,order=c(0,1,0))
+plot(ankles_timeseries)
+A.pred <- predict(fit,n.ahead=1000)
+lines(A.pred$pred,col="red")
+lines(A.pred$pred+2*A.pred$se,col="red",lty=3)
+
+#Thus Arima model is used to predict the future values of a time series dataset and for the dataset I am using, it helps in prediction of the future values of the ankle acceleration and hereby helping in prediction of parkinsons disease in a person.
+
+#NOTE: I have used only the acceleration data here but can also be applied to the speech data that I am using in my project.
+```
+

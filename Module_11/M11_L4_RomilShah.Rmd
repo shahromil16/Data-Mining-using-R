@@ -1,0 +1,43 @@
+---
+title: "M11_L4_RomilShah"
+author: "Romil Shah"
+date: "August 1, 2016"
+output: word_document
+---
+
+```{r}
+library(RCurl)
+library(plyr)
+library(ggplot2)
+library(forecast)
+library(astsa)
+
+data <- read.csv("C:/Users/rams1/Desktop/DSCS6030/train_data.txt")
+
+#This dataset consists of the vocal frequencies of the various subjects who have or dont have Parkinsons. It consists of the voice sampels of sustained vowels, numbers from 1 to 10 and short sentences or words. On basis of this the parkinsons patient can be identified. There are also labels provided to match with the predicted values. Here using the number '1' for all parkinsons patients, I am trying to find a seosonal model IF it exists for this dataset.
+
+#link to the dataset: https://archive.ics.uci.edu/ml/datasets/Parkinson+Speech+Dataset+with++Multiple+Types+of+Sound+Recordings
+
+#Obtaining data for subject 1
+subject1 <- ts(data[1:519,][,5])
+diff_5 <- diff(subject1,2)
+acf2(diff_5)
+subject1<-ts(subject1, freq=5)
+mod1<-sarima(subject1, 1,0,0,2,1,0,5)
+
+mod<-Arima(subject1,order=c(1, 0, 0),
+            seasonal=list(order=c(2, 1, 0), period=12))
+mod
+
+#plot model
+plot(fitted(mod), mod$residuals)
+plot(mod$x, col='red')
+lines(fitted(mod), col='blue')
+
+#forecasting
+sarima.for(subject1, 10, 1,0,0,2,1,0,12)
+predict(mod, n.ahead=10)
+
+#Taking a look at the plot, it is seen that the seasonal model is able to find the patterns which would repeat for the patients with parinsons disease in voice data for number '1'.
+#Thus using this, I was able to set a prediction for the future patient voice data. Seasonal model can also be applied for gait data as there are patterns which might repeat in case of either healthy or parkinsons patients.
+```
