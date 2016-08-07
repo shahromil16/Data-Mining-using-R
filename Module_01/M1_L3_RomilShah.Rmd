@@ -1,0 +1,83 @@
+---
+title: "Module_01_Lesson_03 Solution"
+author: "Romil Shah"
+date: "05-15-2016"
+---
+
+```{r}
+twitterdata<-read.csv(file="C:/Users/rams1/Desktop/DSCS6030/Module_01/M01_quasi_twitter.csv")
+require(ggplot2)
+```
+
+
+##How is the data distributed? What are the summaries?
+
+####(1) As per creation month-day-year
+```{r echo=FALSE}
+summary(twitterdata$created_at_month)
+qplot(created_at_month, data=twitterdata, geom = "bar") + scale_x_discrete()
+qplot(created_at_day,data=twitterdata,geom="histogram")
+qplot(created_at_year,data=twitterdata,geom="histogram")
+```
+
+####(2) As per Twitter data by country
+```{r}
+summary(twitterdata$country)
+```
+
+####(3) As per Friends_count
+```{r}
+qplot(data=twitterdata, x=friends_count)
+summary(twitterdata$friends_count)
+
+```
+
+####(4) As per gender
+```{r}
+qplot(data=twitterdata, x=gender)
+summary(twitterdata$gender)
+
+```
+
+In the same way other columns can be used to classify the type of distribution of the data.
+
+
+##Anomolies or Outliers
+
+```{r}
+boxplot(twitterdata$height)
+boxplot(twitterdata$statuses_count)
+boxplot(twitterdata$age)
+```
+There can be seen some outliers for all the box plots. 
+
+```{r}
+qplot(1,mobile_friends_count, data=twitterdata,xlab = "Outlier in friends_count")+geom_violin()
+```
+The violin plot also shows the outliers in the friends count.
+
+##Can you identify:
+
+1. Useful raw data transform
+```{r}
+qplot(x=log(followers_count+1,2), data=twitterdata)
+```
+This shows that the log followers are more between 5 to 12 in the log scale and there are very few beyond that range.
+
+2. Data quality problems
+* Age showing '0'
+* Negative number in friends count
+
+3. Oultiers
+This was shown before that outliers lie in the places where there is data quality problem.
+
+## Functional Relationships
+``` {r}
+ggplot(twitterdata, aes(x = age, y = friends_count, colour=gender)) + geom_point()
+```
+Males tend to have more friends count than females in each age group.
+
+``` {r}
+ggplot(twitterdata, aes(x = wage, y = education, colour=gender)) + geom_point()
+```
+Males tend to have more wage for their education compared to female counterparts.

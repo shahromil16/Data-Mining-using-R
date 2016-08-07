@@ -1,0 +1,278 @@
+---
+title: "Module_01_Lesson_02 Solution"
+author: "Romil Shah"
+date: "05-15-2016"
+---
+
+```{r}
+require(ggplot2)
+require(gridExtra)
+require(moments)
+require(reshape2)
+```
+
+## Solution to Question 1:
+
+####Cauchy Probability Density Function
+```{r}
+trials<-1000
+cauchy_dist <-data.frame(cauchy1=rcauchy(n=trials,location=0, scale=0.5), cauchy2=rcauchy(n=trials, location=0, scale=1), cauchy3=rcauchy(n=trials, location=0,scale=2), cauchy4=rcauchy(n=trials, location=-2, scale=1))
+
+cauchy<- melt(data=cauchy_dist, variable.name ="locationshape", value.name="x")
+
+qplot(data=cauchy, x=x, color=locationshape, geom='density')+scale_x_continuous(limits=c(-5,5),breaks=seq(-5,5,1))+ylab('Probability(x)')+ scale_color_discrete(name="Location and Shape Parameters", labels=c("Location=0, Shape=0.5","Location=0, Shape=1", "Location =0, Shape=2", "Location=-2, Shape=1"))
+```
+
+####Cauchy Cumulative Density Function
+```{r}
+trials<-1000
+cauchy_dist <-data.frame(cauchy1=rcauchy(n=trials,location=0, scale=0.5), cauchy2=rcauchy(n=trials, location=0, scale=1), cauchy3=rcauchy(n=trials, location=0,scale=2), cauchy4=rcauchy(n=trials, location=-2, scale=1))
+
+cauchy<- melt(data=cauchy_dist, variable.name ="locationshape", value.name="x")
+
+qplot(data=cauchy, x=x, color=locationshape,geom='density')+stat_ecdf() +scale_x_continuous(limits=c(-5,5),breaks=seq(-5,5,1))+ylab('Probability(x)')+ scale_color_discrete(name="Location and Shape Parameters", labels=c("Location=0, Shape=0.5","Location=0, Shape=1", "Location =0, Shape=2", "Location=-2, Shape=1"))
+```
+
+## Solution to Question 2:
+
+```{r}
+q2_data<-read.csv(file="C:/Users/rams1/Desktop/DSCS6030/Module_01/M01_Lesson_02_Q1.csv")
+str(q2_data)
+set.seed(333)
+trials<-dim(q2_data)[1]
+```
+
+### Summary Stats ###
+__Column: A__
+```{r}
+summary(q2_data$A)
+head(q2_data$A)
+```
+
+```{r}
+library(moments)
+skewness(q2_data$A)
+kurtosis(q2_data$A)
+```
+
+Data is continuous with positive skew thus data is shifted towards the right. Also the skew is less and the mean~median. Kurtosis < Gaussian thus sharper peak.
+
+__Column: B__
+```{r}
+summary(q2_data$B)
+head(q2_data$B)
+```
+
+```{r}
+skewness(q2_data$B)
+kurtosis(q2_data$B)
+```
+
+Data is continuous with positive skew thus data is shifted towards the right. Also the skew is less and the mean~median. Kurtosis ~ Gaussian thus nearly similar peak.
+
+__Column: C__
+```{r}
+summary(q2_data$C)
+```
+
+```{r}
+skewness(q2_data$C)
+kurtosis(q2_data$C)
+```
+
+Data is discrete with negative skew thus data is shifted towards the left. Also the skew is less and the mean~median. Kurtosis < Gaussian thus sharper peak.
+
+__Column: D__
+```{r}
+summary(q2_data$D)
+head(q2_data$D)
+```
+
+```{r}
+skewness(q2_data$D)
+kurtosis(q2_data$D)
+```
+
+Data is discrete with positive skew thus data is shifted towards the right. Also the skew is less and the mean~median. Kurtosis > Gaussian thus rounded peak.
+
+__Column: E__
+```{r}
+summary(q2_data$E)
+head(q2_data$E)
+```
+
+```{r}
+skewness(q2_data$E)
+kurtosis(q2_data$E)
+```
+
+Data is discrete with negative skew thus data is shifted towards the left. Also the skew is less and the mean~median. Kurtosis << Gaussian thus highly sharp peak.
+
+
+### Anomolies or Outliers ###
+__Column: A__
+```{r}
+# boxplot
+boxplot(q2_data$A,names=c("column A"),show.names=T)
+```
+```{r}
+# histogram 
+qplot(x=q2_data$A,data=q2_data,geom='blank') + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1) + labs(x = "column A") + geom_rug()
+```
+There is a possibility of an outlier based upon an unfilled circle seen on the top pf box plot. 
+```{r}
+qqnorm(q2_data$A)
+qqline(q2_data$A)
+```
+The data looks more normally distributed.
+
+__Column: B__
+```{r}
+# boxplot
+boxplot(q2_data$B,names=c("column B"),show.names=T)
+```
+```{r}
+# histogram
+qplot(x=q2_data$B,data=q2_data,geom='blank') + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1) + labs(x = "column B") + geom_rug()
+```
+There are outliers based on the box plot. 
+```{r}
+qqnorm(q2_data$B)
+qqline(q2_data$B)
+```
+The data seems to be normally distributed.
+
+__Column: C__
+```{r}
+# boxplot
+boxplot(q2_data$C,names=c("column C"),show.names=T)
+```
+```{r}
+# histogram
+qplot(x=q2_data$C,data=q2_data,geom='blank') + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1) + labs(x = "column C") + geom_rug()
+```
+There seems to be no oulier from the box plot. The histogram shows that the data is not concentrated and as it is discrete it can be uniform discrete or binomial data.
+
+__Column: D__
+```{r}
+# boxplot
+boxplot(q2_data$D,names=c("column D"),show.names=T)
+```
+```{r}
+# histogram 
+qplot(x=q2_data$D,data=q2_data,geom='blank') + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1) + labs(x = "column D") + geom_rug()
+```
+There seems to be an outlier based upon the box plot. The histogram shows that the data can be binomial as it is discrete.
+
+__Column: E__
+```{r}
+# boxplot
+boxplot(q2_data$E,names=c("column E"),show.names=T)
+```
+```{r}
+# histogram
+qplot(x=q2_data$E,data=q2_data,geom='blank') + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1) + labs(x = "column E") + geom_rug()
+```
+Based upon the box plot there seems to be no outliers. Also the histogram shows that the data can be uniformally distributed but continuous.
+
+
+
+### Regeneration of Data ###
+__Column: A__
+```{r}
+mean_A<-mean(q2_data$A)
+sd_A<-sd(q2_data$A)
+Recons_A<-rnorm(trials,mean=mean_A,sd=sd_A)
+```
+```{r}
+summary(Recons_A)
+summary(q2_data$A)
+```
+Assuming to be normal distribution, the summary seems to be similar.
+```{r}
+dataA <- c(q2_data$A,Recons_A)
+df_A <- data.frame(dataA,c(rep("Actual_A",333),rep("Recons_A",333)))
+colnames(df_A) <- c("data","dist")
+qplot(dataA,data=df_A,geom='blank') + facet_wrap(~dist) + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1)
+```
+The histogram comparison shows that they are quite similar.
+
+__Column: B__
+```{r}
+mean_B<-mean(q2_data$B)
+sd_B<-sd(q2_data$B)
+Recons_B<-rnorm(trials,mean=mean_B,sd=sd_B)
+```
+```{r}
+summary(Recons_B)
+summary(q2_data$B)
+```
+Assuming to be normal distribution, the summary seems to be similar.
+```{r}
+dataB<-c(q2_data$B,Recons_B)
+df_B<-data.frame(dataB,c(rep("Actual_B",333),rep("Recons_B",333)))
+colnames(df_B)<-c("data","dist")
+qplot(dataB,data=df_B,geom='blank') + facet_wrap(~dist) + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1)
+```
+The histogram comparison shows that they are quite similar.
+
+__Column: C__
+```{r}
+Recons_C<-rbinom(n=trials,size=12,prob=0.5)
+```
+```{r}
+summary(Recons_C)
+summary(q2_data$C)
+```
+Assuming to be binomial distribution, the summary seems to be similar. size and prob is obtained by repeated checks.
+```{r}
+dataC<-c(q2_data$C,Recons_C)
+df_C<-data.frame(dataC,c(rep("Actual_C",333),rep("Recons_C",333)))
+colnames(df_C)<-c("data","dist")
+qplot(dataC,data=df_C,geom='blank') + facet_wrap(~dist) + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1)
+```
+The comparison shows quite similar structures.
+
+__Column: D__
+```{r}
+Recons_D<-rbinom(n=trials,size=12,prob=0.4)
+```
+```{r}
+summary(Recons_D)
+summary(q2_data$D)
+```
+Assuming binomial distribution the summary seems quite different. 
+```{r}
+dataD<-c(q2_data$D,Recons_D)
+df_D<-data.frame(dataD,c(rep("Actual_D",333),rep("Recons_D",333)))
+colnames(df_D)<-c("data","dist")
+qplot(dataD,data=df_D,geom='blank') + facet_wrap(~dist) + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1)
+```
+There seems similarity in the plots thus it can be binomial. Has to be poisson or binomial as the summary is different but the plots are somewhat similar or other such discrete distribution.
+
+__Column: E__
+```{r}
+Recons_E<-runif(n=trials,min=min(q2_data$E),max=max(q2_data$E))
+```
+```{r}
+summary(Recons_E)
+summary(q2_data$E)
+```
+Assuming uniform distribution we can see there is similarity in the data.
+```{r}
+dataE<-c(q2_data$E,Recons_E)
+df_E<-data.frame(dataE,c(rep("Actual_E",333),rep("Recons_E",333)))
+colnames(df_E)<-c("data","dist")
+qplot(dataE,data=df_E,geom='blank') + facet_wrap(~dist) + geom_line(aes(y=..density..),stat='density') +
+  geom_histogram(aes(y=..density..),alpha =0.4,binwidth=1)
+```
+The plots show good similar structure. Thus has to be uniform.

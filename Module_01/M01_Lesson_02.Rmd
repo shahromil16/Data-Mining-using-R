@@ -1,0 +1,687 @@
+---
+title: 'Lesson 2: Understanding probability distributions'
+author: "Nik Bear Brown"
+output: html_document
+---
+
+## Lesson 2: Understanding probability distributions
+
+In the second lesson, we study the theory behind probability distributions, variables. random variables, and learn some notation. We then use R to graph, and identify several common probability distributions.
+
+## Additional packages needed
+ 
+To run the code in M01_Lesson_02.Rmd you may need additional packages.
+
+* If necessary install `ggplot2` package.
+
+`install.packages("ggplot2"); 
+
+
+```{r}
+require(ggplot2)
+```
+
+## Topics
+
+* Probability
+* Random variables
+* Probability distributions
+    * Uniform
+    * Normal
+    * Binomial
+    * Poisson     
+    * Fat Tailed
+    
+## Probability
+
+* Probability is a measure of the likelihood of a random phenomenon or chance behavior.  Probability describes the long-term proportion with which a certain outcome will occur in situations with short-term uncertainty. 
+* Probability is expressed in numbers between 0 and 1.  Probability = 0 means the event never happens; probability = 1 means it always happens.
+* The total probability of all possible event always sums to 1. 
+
+## Sample Space
+
+* Coin Toss ={head,tail} 
+* Two coins S = {HH, HT, TH, TT}
+* Inspecting a part ={good,bad}
+* Rolling a die S ={1,2,3,4,5,6}
+
+## Random Variables
+
+In probability and statistics, a random variable,  or stochastic variable is a variable whose value is subject to variations due to chance (i.e. it can take on a range of values)
+
+
+* Coin Toss ={head,tail} 
+* Rolling a die S ={1,2,3,4,5,6}
+
+Discrete Random Variables
+
+* Random variables (RVs) which may take on only a countable number of distinct values
+E.g. the total number of tails X you get if you flip 100 coins
+* X is a RV with arity k if it can take on exactly one value out of {x1, …, xk}
+E.g. the possible values that X can take on are 0, 1, 2, …, 100
+
+Continuous Random Variables
+
+* Probability density function (pdf) instead of probability mass function (pmf)
+* A pdf is any function f(x) that describes the probability density in terms of the input variable x.
+
+
+
+## Probability distributions
+
+* We use probability distributions because they model data in real world.
+* They allow us to calculate what to expect and therefore understand what is unusual.
+* They also provide insight in to the process in which real world data may have been generated.
+* Many machine learning algorithms have assumptions based on certain probability distributions.
+
+_Cumulative distribution function_
+
+A probability distribution Pr on the real line is determined by the probability of a scalar random variable X being in a half-open interval (-$\infty$, x], the probability distribution is completely characterized by its cumulative distribution function:
+
+$$
+ F(x) = \Pr[X \leq x] \quad \forall \quad x \in R .
+$$
+
+
+## Uniform Distribution
+
+$$
+X \equiv U[a,b]
+$$
+
+$$
+ f(x) = \frac{1}{b-a} \quad for \quad a \lt x \lt b
+$$
+
+$$
+ f(x) = 0 \quad for \quad a \leq x  \quad or  \quad \geq b
+$$
+
+$$
+ F(x) = \frac{x-a}{b-a} \quad for \quad a \leq x \lt b
+$$
+
+$$
+F(x) = 0 \quad for \quad x  \lt a  \quad 
+ F(x) = 1 \quad for \quad x  \geq b
+$$
+
+![image Uniform Distribution"](http://54.88.34.236/YouTube/MachineLearning/M01/Uniform_A.png)
+
+_Continuous Uniform Distribution_
+
+In probability theory and statistics, the continuous uniform distribution or rectangular distribution is a family of symmetric probability distributions such that for each member of the family, all intervals of the same length on the distribution's support are equally probable.
+
+- from [Uniform distribution (continuous  Wikipedia)](https://en.wikipedia.org/wiki/Uniform_distribution_(continuous))
+    
+
+![image continuous  Uniform Distribution"](https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Uniform_Distribution_PDF_SVG.svg/375px-Uniform_Distribution_PDF_SVG.svg.png)
+![image continuous  Uniform Distribution"](https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Uniform_cdf.svg/375px-Uniform_cdf.svg.png)
+
+_Discrete Uniform Distribution_
+
+In probability theory and statistics, the discrete uniform distribution is a symmetric probability distribution whereby a finite number of values are equally likely to be observed; every one of n values has equal probability 1/n. Another way of saying "discrete uniform distribution" would be "a known, finite number of outcomes equally likely to happen".
+
+- from [Uniform distribution (discrete)  Wikipedia)](https://en.wikipedia.org/wiki/Uniform_distribution_(discrete))
+    
+
+![image Uniform distribution (discrete) "](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Uniform_discrete_pmf_svg.svg/488px-Uniform_discrete_pmf_svg.svg.png)
+![imageUniform distribution (discrete) "](https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Dis_Uniform_distribution_CDF.svg/488px-Dis_Uniform_distribution_CDF.svg.png)
+
+## Uniform Distribution in R
+
+runif function in R. Type ?runif
+
+_The Uniform Distribution_
+
+_Description_
+
+These functions provide information about the uniform distribution on the interval from min to max. dunif gives the density, punif gives the distribution function qunif gives the quantile function and runif generates random deviates.
+
+_Usage_
+
+* dunif(x, min = 0, max = 1, log = FALSE)  //dunif gives the density
+* punif(q, min = 0, max = 1, lower.tail = TRUE, log.p = FALSE) // punif gives the distribution function
+* qunif(p, min = 0, max = 1, lower.tail = TRUE, log.p = FALSE) // qunif gives the quantile function
+* runif(n, min = 0, max = 1) // runif generates random deviates. (a random sample)
+
+
+    
+```{r}
+set.seed(333)
+trails <- 3333
+min <- 1                                  
+max <- 100
+uni_dist<-runif(trails,min,max+1)
+uni_dist<-data.frame(x=uni_dist)
+head(uni_dist)
+str(uni_dist)
+names(uni_dist)
+```
+
+
+## Plotting a Uniform Distribution
+
+```{r}
+qplot(x=x,data=uni_dist)
+ggplot(uni_dist) + aes(x=x) + geom_histogram()
+qplot(x=x,data=uni_dist,binwidth=10)
+qplot(x=x,data=uni_dist,binwidth=10)+ scale_x_continuous(breaks=seq(0,100,10))
+min <- 1                                  
+max <- 6
+die <- as.integer(runif(trails,min,max+1))
+die<-data.frame(roll=die)
+head(die)
+qplot(x=roll,data=die, color=I('#615445'), fill=I('#CC0000')) + scale_x_discrete(breaks=1:6)
+qplot(x=roll,data=die, color=I('#615445'), fill=I('#CC0000')) + scale_x_discrete(breaks=1:6) + labs(title="Uniform Distribution Single Die", y="Count", x="Die roll Random Variable n=3333 Min=1 Max=6")
+```
+    
+
+## Quiz Distribution of two dice
+
+See if you can generate a distribution that models the output that would be generated by the sum of two dice.
+
+## Quiz Distribution of two dice answer
+
+```{r}
+dice <- as.integer(runif(trails,min,max+1)+runif(trails,min,max+1)) 
+dice<-data.frame(rolls=dice)
+head(dice)
+summary(dice)
+dice <- as.integer(runif(trails,min,max+0.5)+runif(trails,min,max+0.5))
+dice<-data.frame(rolls=dice)
+head(dice)
+summary(dice)
+qplot(x=rolls,data=dice, color=I('#615445'), fill=I('#CC0000')) + scale_x_discrete(breaks=2:12) +  labs(title="Distribution Sum of Two Dice", y="Count", x="Sum of Two Uniform Random Variables (Dice) n=3333 Min=1 Max=6")
+
+```
+
+## Normal Distribution
+
+In probability theory, the normal (or Gaussian) distribution is a very common continuous probability distribution. The normal distribution is remarkably useful because of the central limit theorem. In its most general form, under mild conditions, it states that averages of random variables independently drawn from independent distributions are normally distributed. Physical quantities that are expected to be the sum of many independent processes (such as measurement errors) often have distributions that are nearly normal. 
+
+- from [Normal Distribution - Wikipedia)](https://en.wikipedia.org/wiki/Normal_distribution)
+   
+
+$$
+X \sim \quad N(\mu, \sigma^2)
+$$
+
+
+$$
+ f(x) = \frac{1}{\sigma \sqrt {2\pi }} e^{-\frac{( x - \mu)^2}{2\sigma^2}} \quad 
+$$
+
+
+![image Normal Distribution"](http://54.88.34.236/YouTube/MachineLearning/M01/Normal_Distribution_A.png)
+
+
+![image Normal Distribution  "](https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Normal_Distribution_PDF.svg/525px-Normal_Distribution_PDF.svg.png)
+
+Normal cumulative distribution function
+![image Normal cumulative distribution function "](https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Normal_Distribution_CDF.svg/525px-Normal_Distribution_CDF.svg.png)
+
+
+_Properties of normal distribution_
+
+- symmetrical, unimodal, and bell-shaped
+- on average, the error component will equal zero, the error above and below the mean will cancel out
+- Z-Score is a statistical measurement is (above/below) the mean of the data
+- important characteristics about z scores:
+  1. mean of z scores is 0
+  2. standard deviation of a standardized variable is always 1
+  3. the linear transformation does not change the _form_ of the distribution
+
+
+The normal (or Gaussian) distribution was discovered in 1733 by Abraham de Moivre as an approximation to the binomial distribution when the number of trails is large.    
+
+![image Abraham de Moivre "](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Abraham_de_moivre.jpg/300px-Abraham_de_moivre.jpg)
+
+- from [Abraham de Moivre - Wikipedia)](https://en.wikipedia.org/wiki/Abraham_de_Moivre)
+
+The Gaussian distribution was derived in 1809 by Carl Friedrich Gauss.    
+
+![image Carl Friedrich Gauss "](https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Carl_Friedrich_Gauss.jpg/330px-Carl_Friedrich_Gauss.jpg)
+
+- from [Carl Friedrich Gauss - Wikipedia)](https://en.wikipedia.org/wiki/Carl_Friedrich_Gauss)
+
+Importance lies in the Central Limit Theorem, which states that the sum of a large number of independent random variables (binomial, Poisson, etc.) will approximate a normal distribution
+
+
+## Central Limit Theorem
+
+```{r options, echo=FALSE}
+library(knitr)
+opts_chunk$set(fig.path=paste0("figure/", sub("(.*).Rmd","\\1",basename(knitr:::knit_concord$get('infile'))), "-"))
+```
+
+
+In probability theory, the central limit theorem (CLT) states that, given certain conditions, the arithmetic mean of a sufficiently large number of iterates of independent random variables, each with a well-defined expected value and well-defined variance, will be approximately normally distributed, regardless of the underlying distribution. The central limit theorem has a number of variants. In its common form, the random variables must be identically distributed. 
+
+- from [Central Limit Theorem - Wikipedia)](https://en.wikipedia.org/wiki/Central_limit_theorem)
+   
+
+The Central Limit Theorem tells us that when the sample size is large the average $\bar{Y}$ of a random sample follows a normal distribution centered at the population average $\mu_Y$ and with standard deviation equal to the population standard deviation $\sigma_Y$, divided by the square root of the sample size $N$. 
+
+This means that if we subtract a constant from a random variable, the mean of the new random variable shifts by that constant. If $X$ is a random variable with mean $\mu$ and $a$ is a constant, the mean of $X - a$ is $\mu-a$. 
+
+This property also holds for the spread, if $X$ is a random variable with mean $\mu$ and SD $\sigma$, and $a$ is a constant, then the mean and SD of $aX$ are $a \mu$ and $\|a\| \sigma$ respectively.
+This implies that if we take many samples of size $N$ then the quantity 
+
+$$
+\frac{\bar{Y} - \mu}{\sigma_Y/\sqrt{N}}
+$$
+
+is approximated with a normal distribution centered at 0 and with standard deviation 1.
+
+## The t-distribution
+
+In probability and statistics, Student's t-distribution (or simply the t-distribution) is any member of a family of continuous probability distributions that arises when estimating the mean of a normally distributed population in situations where the sample size is small and population standard deviation is unknown. Whereas a normal distribution describes a full population, t-distributions describe samples drawn from a full population; accordingly, the t-distribution for each sample size is different, and the larger the sample, the more the distribution resembles a normal distribution.
+The t-distribution plays a role in a number of widely used statistical analyses, including the Student's t-test for assessing the statistical significance of the difference between two sample means, the construction of confidence intervals for the difference between two population means, and in linear regression analysis. The Student's t-distribution also arises in the Bayesian analysis of data from a normal family.
+
+- from [The t-distribution - Wikipedia)](https://en.wikipedia.org/wiki/Student%27s_t-distribution)
+
+When the CLT does not apply (i.e. as the number of samples is large), there is another option that does not rely on large samples When a the original population from which a random variable, say $Y$, is sampled is normally distributed with mean 0 then we can calculate the distribution of 
+
+
+number of variants. In its common form, the random variables must be identically distributed. 
+
+
+
+$$
+\sqrt{N} \frac{\bar{Y}}{s_Y}
+$$
+
+
+![image Student's t-distribution "](https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Student_t_pdf.svg/488px-Student_t_pdf.svg.png)
+
+Normal cumulative distribution function
+![image Normal cumulative Student's t-distribution "](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Student_t_cdf.svg/488px-Student_t_cdf.svg.png)
+
+## Normal Distribution in R
+
+rnorm function in R. Type ?rnorm
+
+_The Normal Distribution_
+
+_Description_
+
+These functions provide information about the Normal Distribution. Density, distribution function, quantile function and random generation for the normal distribution with mean equal to mean and standard deviation equal to sd.
+
+_Usage_
+
+* dnorm(x, mean = 0, sd = 1, log = FALSE)  // gives the density
+* pnorm(q, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE) // gives the distribution function
+* qnorm(p, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE)// gives the quantile function
+* rnorm(n, mean = 0, sd = 1) // generates random deviates. (a random sample)
+
+```{r}
+norm_dist<-rnorm(trails) # norm_dist<-rnorm(33333, mean=33, sd=13)
+norm_denisty<-dnorm(norm_dist)
+ggplot(data.frame(x=norm_dist,y=norm_denisty)) + aes(x=x,y=y) + geom_point() + labs(title="Standard Normal Distribution", y="Count", x="Normal Random Variable n=3333 mean=0, SD=1")
+pnorm(c(-3,-2,-1,0,1,2,3))
+head(pnorm(norm_dist))
+pnorm(1)-pnorm(-1) # +/- sd=1
+sqrt(0.2) # sd^2=var=0.2  sqrt(0.2)
+r_normal <-data.frame(A=rnorm(n=trails,mean=0,sd=sqrt(0.2)),
+                    B=rnorm(n=trails,mean=0,sd=sqrt(1.0)),
+                    C=rnorm(n=trails,mean=0,sd=sqrt(5.0)),
+                    D=rnorm(n=trails,mean=-2,sd=sqrt(0.5)))  
+head(r_normal)
+summary(r_normal)
+require(reshape2)
+rnd <- melt(data=r_normal)
+head(rnd)
+ggplot(rnd, aes(x=value)) + geom_density(aes(group=variable,color=variable,fill=variable)) + labs(title="Wikipedia Normal Distributions", y="??,sigma^2(X)", x=" x n=3333")
+
+```
+
+
+## Binomial Distribution
+
+
+$$
+X \quad \sim \quad B(n, p)
+$$
+
+
+$$
+ P(X=k) = \binom{n}{k} p^k (1-p)^{n-k} \quad k=1,2,...,n
+$$
+
+$$
+    \binom{n}{k} = \frac{n!}{k!(n-k)!}
+$$
+
+_Binomial Distribution_
+
+In probability theory and statistics, the binomial distribution with parameters n and p is the discrete probability distribution of the number of successes in a sequence of n independent yes/no experiments, each of which yields success with probability p. A success/failure experiment is also called a Bernoulli experiment or Bernoulli trial; when n = 1, the binomial distribution is a Bernoulli distribution.
+
+- from [Binomial Distribution - Wikipedia](https://en.wikipedia.org/wiki/Binomial_distribution)
+
+
+   
+Binomial Distribution    
+![image Binomial Distribution  "](https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Binomial_distribution_pmf.svg/450px-Binomial_distribution_pmf.svg.png)
+
+Binomial cumulative distribution function
+![image Binomial cumulative distribution function "](https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Binomial_distribution_cdf.svg/450px-Binomial_distribution_cdf.svg.png)
+
+
+* The data arise from a sequence of n independent trials.
+* At each trial there are only two possible outcomes, conventionally called success and failure.
+* The probability of success, p, is the same in each trial.
+* The random variable of interest is the number of successes, X, in the n trials.
+* The assumptions of independence and constant p are important. If they are invalid,  so is the binomial distribution
+
+_Bernoulli Random Variables_
+
+* Imagine a simple trial with only two possible outcomes
+    * Success (S) with probabilty p.
+    * Failure (F) with probabilty 1-p.
+
+* Examples
+    * Toss of a coin (heads or tails)
+    * Gender of a newborn (male or female)
+
+
+## Binomial Distribution in R
+
+rbinom function in R. Type ?rbinom
+
+_The Binomial Distribution_
+
+_Description_
+
+These functions provide information about the Binomial Distribution. Density, distribution function, quantile function and random generation for the binomial distribution with parameters size and prob.
+
+This is conventionally interpreted as the number of ‘successes’ in size trials.
+
+
+_Usage_
+
+* dbinom(x, size, prob, log = FALSE) // gives the density
+* pbinom(q, size, prob, lower.tail = TRUE, log.p = FALSE) // gives the distribution function
+* qbinom(p, size, prob, lower.tail = TRUE, log.p = FALSE)
+ // gives the quantile function
+* rbinom(n, size, prob) // generates random deviates. (a random sample)
+
+```{r}
+bi_dist<-rbinom(n=1,size=9,prob=0.33) # n=1  means one draw size=9 means nine trails 
+bi_dist # we expect 0.33* 9 or about 3 success
+bi_dist<-rbinom(n=5,size=9,prob=0.33) # n=5  means five draws size=9 means nine trails 
+bi_dist # we expect each trial to be around 3 success
+bernoulli_dist<-rbinom(n=1,size=1,prob=0.33) # Bernoulli distribution 
+bi_dist<-rbinom(n=trails,size=9,prob=0.33) # same as bi_dist<-rbi(3333)
+summary(bi_dist)
+qplot(x=x,data=data.frame(x=bi_dist), color=I('#615445'), fill=I('#CC0000')) + scale_x_discrete(breaks=0:9) + labs(title="Binomial Distribution", y="Count", x="Binomial n=3333,size=9,prob=0.33")
+r_binomial <-data.frame(A=rbinom(n=trails,size=20,prob=0.5),
+                      B=rbinom(n=trails,size=20,prob=0.7),
+                      C=rbinom(n=trails,size=40,prob=0.5))
+head(r_binomial)
+summary(r_binomial)
+rnd <- melt(data=r_binomial)
+head(rnd)
+ggplot(rnd, aes(x=value)) + geom_density(aes(group=variable,color=variable,fill=variable)) + labs(title="Wikipedia Binomial Distributions", y="??,sigma^2(X)", x=" successes")
+
+```
+
+## Poisson Distribution
+
+$X$ expresses the number of "rare" events
+
+$$
+X \quad \sim P( \lambda )\quad \lambda \gt 0
+$$
+
+$$
+    P(X = x) = \frac{ \mathrm{e}^{- \lambda } \lambda^x }{x!}  \quad x=1,2,...,n
+$$
+
+
+_Poisson Distribution_
+
+In probability theory and statistics, the Poisson distribution, named after French mathematician Siméon Denis Poisson, is a discrete probability distribution that expresses the probability of a given number of events occurring in a fixed interval of time and/or space if these events occur with a constant rate per time unit and independently of the time since the last event. The Poisson distribution can also be used for the number of events in other specified intervals such as distance, area or volume.
+
+For instance, an individual keeping track of the amount of mail they receive each day may notice that they receive an average number of 4 letters per day. If receiving any particular piece of mail doesn't affect the arrival times of future pieces of mail, i.e., if pieces of mail from a wide range of sources arrive independently of one another, then a reasonable assumption is that the number of pieces of mail received per day obeys a Poisson distribution. Other examples that may follow a Poisson: the number of phone calls received by a call center per hour, the number of decay events per second from a radioactive source, or the number of taxis passing a particular street corner per hour.
+
+The Poisson distribution gives us a probability mass for discrete natural numbers *k* given some mean value &lambda;. Knowing that, on average, &lambda; discrete events occur over some time period, the Poisson distribution gives us the probability of seeing exactly *k* events in that time period.
+
+For example, if a call center gets, on average, 100 customers per day, the Poisson distribution can tell us the probability of getting exactly 150 customers today.
+
+*k* &isin; **N** (i.e. is a natural number) because, on any particular day, you can't have a fraction of a phone call. The probability of any non-integer number of people calling in is zero. E.g., P(150.5) = 0.
+
+&lambda; &isin; **R** (i.e. is a real number) because, even though any *particular* day must have an integer number of people, the *mean* number of people taken over many days can be fractional (and usually is). It's why the "average" number of phone calls per day could be 3.5 even though half a phone call won't occur.
+
+
+- from [Poisson Distribution - Wikipedia)](https://en.wikipedia.org/wiki/Poisson_distribution)
+   
+Poisson Distribution    
+![image Poisson Distribution  "](https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Poisson_pmf.svg/488px-Poisson_pmf.svg.png)
+
+Poisson cumulative distribution function
+![image Poisson cumulative distribution function "](https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Poisson_cdf.svg/488px-Poisson_cdf.svg.png)
+
+
+_Properties of Poisson distribution_
+
+* The mean number of successes from n trials is µ = np
+* If we substitute µ/n for p, and let n tend to infinity, the binomial distribution becomes the Poisson distribution.
+* Poisson distributions are often used to describe the number of occurrences of a ‘rare’ event. For example
+    * The number of storms in a season
+    * The number of occasions in a season when river levels exceed a certain value
+* The main assumptions are that events occur 
+    * at random (the occurrence of an event doesn’t change the probability of  it happening again) 
+    *  at a constant rate 
+* Poisson distributions also arise as approximations  to  binomials when n is large and p is small.
+* When there is a large number of trials, but a very small probability of success, binomial calculation becomes impractical
+
+
+## Poisson Distribution in R
+
+rpois function in R. Type ?rpois
+
+_The Poisson Distribution_
+
+_Description_
+
+These functions provide information about the Poisson Distribution. Density, distribution function, quantile function and random generation for the Poisson distribution with parameter lambda.
+
+_Usage_
+
+* dpois(x, lambda, log = FALSE) // gives the density
+* ppois(q, lambda, lower.tail = TRUE, log.p = FALSE) // gives the distribution function
+* qpois(p, lambda, lower.tail = TRUE, log.p = FALSE) // gives the quantile function
+* rpois(n, lambda)// generates random deviates. (a random sample)
+
+```{r}
+poisson_dist <-data.frame(lambda1=rpois(n=trails,lambda=1), lambda3=rpois(n=trails,lambda=3), lambda5=rpois(n=trails,lambda=5), lambda10=rpois(n=trails,lambda=10))
+head(poisson_dist)
+str(poisson_dist)
+poisson <- melt(data=poisson_dist, variable.name = "lambda", value.name = "count")
+head(poisson)
+ggplot(poisson, aes(x=count)) + geom_density(aes(group=lambda,color=lambda,fill=lambda)) + labs(title="Poisson Distribution", y="Count", x=" n=3333 lambda=1,3,5 & 10")
+#ggplot(poisson, aes(x=value)) + geom_density(aes(group=variable,color=variable,fill=variable)) + labs(title="Poisson Distribution", y="Count", x=" n=3333 lambda=1,3,5 & 10")
+```
+
+
+## Poisson and Binomial Distributions
+
+The binomial distribution is usually shown with a fixed n, with different values of p that will affect the k successes from the fixed n trails. This supposes we know the number of trails beforehand.  We can graph the binomial distribution as a set of curves with a fixed n, and varying probabilities of the probability of success, p, below.
+
+
+```{r fig.width=7, fig.height=6}
+trails<-333
+d_binomial <-data.frame(A=dbinom(1:trails, size=trails, prob=0.25),
+                        B=dbinom(1:trails, size=trails, prob=0.5),
+                        C=dbinom(1:trails, size=trails, prob=0.75))
+head(d_binomial)
+plot(1:trails, d_binomial$A, type="o", col=2, ylab="P(X=k)", xlab="k", main="Binomial distribution with n=333, p=0.25,0.5,0.75")
+points(1:trails,d_binomial$B,col=3)
+points(1:trails,d_binomial$C,col=4)
+```
+
+## What if we knew the rate but not the probability, p, or the number of trails, n?
+
+But what if we were to invert the problem? What if we knew only the number of heads we observed, but not the total number of flips? If we have a known expected number of heads but an unknown number of flips, then we don't really know the true probability for each individual head. Rather we know that, on average, p=mean(k)/n. However if we were to plot these all on the same graph in the vicinity of the same k, we can make them all have a convergent shape around mean(k) because, no matter how much we increase n, we decrease p proportionally so that, for all n, the peak stays at mean(k).
+
+```{r fig.width=7, fig.height=6}
+trails<-100
+d_binomial <-data.frame(A=dbinom(1:trails, size=200, prob=0.25),
+                        B=dbinom(1:trails, size=100, prob=0.5),
+                        C=dbinom(1:trails, size=1000, prob=0.05))
+plot(1:trails, d_binomial$A, type="o", col=2, ylab="P(X=k)", xlab="k", main="Binomial distribution with size*p = 50")
+points(1:trails,d_binomial$B,col=3)
+points(1:trails,d_binomial$C,col=4)
+```
+
+Notice that the curves get just a little flatter as n gets higher. This is because the rightward tail keeps getting longer and longer. As n gets large, binomial distribution gives us an approximate Poisson distribution since, as n tends toward infinity, but p tends toward 0.
+
+## Deriving the Poisson Distribution from the Binomial Distribution
+
+Let’s make this a little more formal. The binomial distribution works when we have a fixed number of events n, each with a constant probability of success p. In the Poisson Distribution, we don't know the number of trials that will happen. Instead, we only know the average number of successes per time period, the rate $\lambda$. So we know the rate of successes per day, or per minute but not the number of trials n or the probability of success p that was used to estimate to that rate. 
+
+If n is the number of trails in our time period, then np is the success rate or $\lambda$, that is, $\lambda$ = np. Solving for p, we get:
+
+$$
+p=\frac{\lambda}{n} \quad(1)
+$$
+Since the Binomial distribution is defined as below 
+$$
+ P(X=k) = \binom{n}{k} p^k (1-p)^{n-k} \quad k=1,2,...,n
+\quad  (2)
+$$
+or equivelently
+$$
+ P(X=k) = \frac{n!}{k!(n-k)!} p^k (1-p)^{n-k} \quad k=1,2,...,n
+\quad  (3)
+$$
+By substituting the above p from (1) into the binomial distribution (3)
+ $$
+ P(X=k) = \frac{n!}{k!(n-k)!} {\frac{\lambda!}{n}}^k (1-{\frac{\lambda!}{n} })^{n-k}  \quad  (4)
+ $$
+
+         
+ 
+For n large and p small:
+ 
+$$
+    P(X = k) \equiv \frac{ \mathrm{e}^{- \lambda } \lambda^k }{k!}  \quad k=1,2,...,n\quad  (5)
+$$
+                                        
+ 
+Which is the probability mass function for the Poisson distribution.
+
+## Poisson approximation to the Binomial in R
+
+From the above derivation, it is clear that as n approaches infinity, and p approaches zero, a Binomial(n,p) will be approximated by a Poisson(n*p). What is surprising is just how quickly this happens. That is how small a “large n” really is. The graph below has “large n” values as low as n = 100, and “small p” values of 0.02.
+
+
+
+```{r fig.width=7, fig.height=6}
+trails<-100
+d_binomial <-data.frame(A=dbinom(1:trails, size=trails, prob=0.02),
+                        B=dpois(1:trails,2))
+head(d_binomial)
+plot(1:trails, d_binomial$A, type="o", col=2, ylab="P(X=k)", xlab="Successes", main="Binomial p=0.02 vs Poisson lambda=2, n = 100")
+points(1:trails,d_binomial$B,col=3)
+```
+
+
+"Large n" Binomial p=0.02, n = 100  
+
+```{r fig.width=7, fig.height=6}
+plot(1:trails, d_binomial$A, type="o", col=2, ylab="P(X=k)", xlab="Successes", main="Binomial p=0.02, n = 100")
+
+```
+
+"Large n" Poisson lambda=2, n = 100  
+
+```{r fig.width=7, fig.height=6}
+plot(1:trails, d_binomial$B, type="o", col=3, ylab="P(X=k)", xlab="Successes", main="Poisson lambda=2, n = 100")
+
+```
+
+
+
+## Fat-Tailed Distribution
+
+_Power Law: Log-Log plot_
+
+![image Fat-Tailed Distribution"](http://54.88.34.236/YouTube/MachineLearning/M01/FatTailed_A.png)
+
+```{r}
+n<-333
+A<-1:n
+B<-A^2
+llog<-data.frame(A,B)
+qplot(A,B, data=llog)
+qplot(log(A,2),log(B,2), data=llog)
+```
+
+_Fat-Tailed Distribution_
+
+In probability theory, the Fat-Tailed (or Gaussian) distribution is a very common continuous probability distribution. The Fat-Tailed distribution is remarkably useful because of the central limit theorem. In its most general form, under mild conditions, it states that averages of random variables independently drawn from independent distributions are Fat-Tailedly distributed. Physical quantities that are expected to be the sum of many independent processes (such as measurement errors) often have distributions that are nearly Fat-Tailed. 
+
+- from [Fat-Tailed Distribution - Wikipedia)](https://en.wikipedia.org/wiki/Fat-Tailed_distribution)
+   
+
+_Properties of Fat-Tailed distribution_
+
+* Power law distributions: 
+    * for variables assuming integer values > 0
+    * Prob [X=k] ~ Ck-α
+    * typically 0 < alpha < 2; smaller a gives heavier tail  
+* For binomial, normal, and Poisson distributions the tail probabilities approach 0 exponentially fast 
+* What kind of phenomena does this distribution model?
+* What kind of process would generate it?
+
+## Cauchy Distribution
+
+An example of a Fat-tailed distribution is the Cauchy distribution.
+
+_Cauchy Distribution_
+
+ The Cauchy distribution, named after Augustin Cauchy, is a continuous probability distribution. It is also known, especially among physicists, as the Lorentz distribution (after Hendrik Lorentz), Cauchy–Lorentz distribution, Lorentz(ian) function, or Breit–Wigner distribution. The simplest Cauchy distribution is called the standard Cauchy distribution. It is the distribution of a random variable that is the ratio of two independent standard normal variables and has the probability density function
+
+The Cauchy distribution is often used in statistics as the canonical example of a "pathological" distribution since both its mean and its variance are undefined. (But see the section Explanation of undefined moments below.) The Cauchy distribution does not have finite moments of order greater than or equal to one; only fractional absolute moments exist.[1] The Cauchy distribution has no moment generating function.
+
+- from [Cauchy Distribution - Wikipedia)](https://en.wikipedia.org/wiki/Cauchy_distribution)
+   
+Cauchy Distribution    
+![image Cauchy Distribution  "](https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Cauchy_pdf.svg/450px-Cauchy_pdf.svg.png)
+
+Cauchy cumulative distribution function
+![image Cauchy cumulative distribution function "](https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Cauchy_cdf.svg/450px-Cauchy_cdf.svg.png)
+
+## Homework Question 1
+
+_Probability distributions_
+
+* Replicate and plot the fat-tailed Cauchy distributions from https://en.wikipedia.org/wiki/Cauchy_distribution
+* Load the file M01_Lesson_02_Q1.csv
+* Answer the following questions for the data in each column:
+    * How is the data distributed?
+    * What are the summary statistics?
+    * Are there anomalies/outliers?
+    * Try to regenerate the data in each column.
+    * Plot your regenerated data versus the original data using a faceted graph. How does it compare? 
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+

@@ -1,0 +1,901 @@
+---
+title: "Exploratory Data Analysis"
+author: "Nik Bear Brown"
+output: html_document
+---
+
+In the this lesson, we look graphical techniques summarize their main characteristics of one, two variable, and multi-variable data sets. To find relationships amongst variables and to find the variables which are most interesting for a particular analysis task.
+
+Rationale: Exploratory data analysis helps one understand the data, to form and change new theories, and decide which techniques are appropriate for analysis. After a model is finished, exploratory data analysis can look for patterns in these data that may have been missed by the original hypothesis tests. Successful exploratory analyses help the researcher modify theories and refine the analysis.
+
+## Additional packages needed
+ 
+To run the code in M01_Lesson_03.Rmd you may need additional packages.
+
+* If necessary install `ggplot2` package.
+
+`install.packages("ggplot2"); 
+
+
+```{r}
+require(ggplot2)
+```
+
+## Topics
+
+* Exploratory Data Analysis
+* Types of Variables
+* Descriptive Statistics
+* Measures of Central Tendency
+* Measures of spread
+* Summary Statistics
+* Univariate Data Analysis
+* Box-Plots
+* Bar charts
+* Histograms
+* Line plots
+* Multivariate Data Analysis
+* Aesthetic mappings
+* Faceting
+* Position Adjustments
+* Scatter plots
+    * Scatter Plot with No apparent relationship
+    * Scatter Plot with Linear relationship
+    * Scatter Plot with Regression Lines 
+    * Scatter Plot with Quadratic relationship
+    * Scatter plot with Homoscedastic  relationship
+    * Scatter plot with Jittering
+* QQplot
+* Assingment
+
+
+## Exploratory Data Analysis
+
+In statistics,exploratory data analysis (EDA) is an approach to analyzing data sets to summarize their main characteristics, often with visual methods concepts apply to statistics and to graphical methods. EDA is for seeing what the data can tell us before the formal modeling or hypothesis testing task.
+
+- from [Exploratory Data Analysis - Wikipedia)](https://en.wikipedia.org/wiki/Exploratory_data_analysis)
+    
+    
+Early forms of Exploratory Data Analysis such as the box plot are often attributed to John Tukey (1970s)
+
+_John Tukey_
+
+John Wilder Tukey (June 16, 1915 - July 26, 2000) was an American mathematician best known for development of the FFT algorithm and box plot.The Tukey range test, the Tukey lambda distribution, the Tukey test all bear his name.
+
+- from [John Tukey - Wikipedia)](https://en.wikipedia.org/wiki/Exploratory_data_analysis)
+    
+    
+_Goals of Exploratory Data Analysis_
+
+* get a general sense of the data  
+* data-driven (model-free)
+* visual (Humans are great pattern recognizers)
+* test assumptions (e.g. normal distributions or skewed?)
+* identify useful raw data & transforms (e.g. log(x))
+* distributions (symmetric, normal, skewed)
+* data quality problems
+* outliers
+* correlations and inter-relationships
+* subsets of interest
+* suggest functional relationships
+
+
+## Data
+
+We will be using the diamonds,economics, and mpg datasets (from ggplot2) as well as some simulated [Twitter](https://twitter.com/). Feel free to tweet questions to [@NikBearBrown](https://twitter.com/NikBearBrown)
+
+```{r data}
+# Load our data
+data(mpg)
+data(economics)
+data(diamonds)
+data_url <- 'http://54.88.34.236/YouTube/MachineLearning/M01/M01_quasi_twitter.csv'
+twitter <- read.csv(url(data_url))
+
+```
+
+## R Functions for Understanding Data
+* We can use `class()`, `dim()`, `nrow()`, `ncol()`, `names()` to understand datasets
+    * `object.size(data.frame)` = returns how much space the dataset is using in memory
+* `head(data.frame, n)`, `tail(data.frame, n)` = returns first/last  $n$ rows of data; default = 6
+* `summary()` = provides summary statistics for each variable, depending on type of variable (numeric,factor).
+    * for numerical variables, displays min max, mean median, etx.
+    * for categorical (factor) variables, displays number of times each value occurs
+* `table(data.frame$variable)` = table of all values of the variable, and how many observations there are for each
+* `str(data.frame)` = structure of data, provides data class, num of observations vs variables, and name of class of each variable and preview of its contents
++ `view(data.frame)` = opens and view the content of the data frame
+
+## ggplot2 diamonds data? 
+
+What is in the diamonds data? ?diamonds typed in the R prompt opens up a full description.
+
+```{r diamonds}
+str(diamonds)
+names(diamonds)
+```
+
+## Quasi-Twitter data? 
+
+What is in the Quasi-Twitter data? This is a simulated Twitter data set based on real Twitter data.
+
+```{r twitter}
+str(twitter)
+names(twitter)
+```
+
+## Types of Variables
+
+_Continuous variables_
+
+Always numeric
+Integers - a whole number; a number that is not a fraction.   e.g. -1,0,1,2,3,4, ...
+
+Floating point numbers (a rational number or a 'float') -  a rational number is any number that can be expressed as the quotient or fraction p/q of two integers, p and q, with the denominator q not equal to zero. Since q may be equal to 1, every integer is a rational number.   e.g. -1.3, 0.0, 3.14159265359, 2.71828, ...
+
+Continuous variables can be any number, positive or negative  
+
+Examples: age in years, weight, website 'hits' and other measurements
+
+_Categorical variables_
+A categorical variable is a variable that can take on one of a limited, and usually fixed, number of possible values.
+
+Types of categorical variables are ordinal, nominal and dichotomous (binary)
+
+### Nominal Variables
+
+Nominal variable is a categorical variable without an intrinsic order
+
+Examples of nominal variables:
+Where a person lives in the U.S. (Northeast, South, Midwest, etc.)
+Sex (male, female)
+Nationality (American, Mexican, French)
+Race/ethnicity (African American, Hispanic, White, Asian American)
+
+
+Enum           | _Nationality_ $\leftarrow$ nominal
+:-------------:|:---------------------------------
+1              | American
+2              | Mexican
+3              | French
+4              | Brasilian
+
+
+
+Ordinal Variables
+
+Ordinal variables are categorical variable with some intrinsic order or numeric value
+
+Examples of ordinal variables:
+Education (no high school degree, HS degree, some college, college degree)
+Agreement (strongly disagree, disagree, neutral, agree, strongly agree)
+Rating (excellent, good, fair, poor)
+Any other scale (e.g. On a scale of 1 to 5)
+
+
+Rank           | _Degree_ $\leftarrow$ ordinal
+:-------------:|---------------------------------:
+1              | PhD
+2              | Master's
+3              | Bachelors
+4              | Associate's
+5              | High School
+
+
+_Dichotomous Variables_
+
+Dichotomous (or binary)  (or boolean) variables – a categorical variable with only 2 levels of categories
+* yes or no
+* true or false 
+* accept or reject
+* pass or fail
+
+## Factors
+
+Factors represent *categorical data* in R  
+
+There are two types: **unordered** vs **ordered** just like  **ordinal** vs **nominal** categorical variables.   
+
+    * `table(factor_Variable)` = how many of each are in the factor
+
+Factor is a data type that is unique to R (although similar to an [Enumerated type](https://en.wikipedia.org/wiki/Enumerated_type) in other languages.)
+
+- The *levels* are the external presentation of the factors
+- Internally it's stored as integers (what is known as an "enum" in many other languages)
+
+
+## Descriptive Statistics
+
+Descriptive statistics is the discipline of quantitatively describing the main features of a collection of data. Common descriptive measures used are measures of central tendency and measures of variability or dispersion or spread. 
+
+_Measures of central tendency_
+
+Measures of central tendency are used to describe the most typical measure.
+
+Mode: the value in a string of numbers that occurs most often
+Median: the value whose occurrence lies in the middle of a set of ordered values
+
+Mean: sometimes referred to as the arithmetic mean. It is the average value characterizing a set of numbers
+
+### Mode
+- the value that occurs most frequently 
+- used w/ nominal data 
+- there can be "ties"
+
+### Median
+- score at the center of the distribution
+- sort and take the middle value (or average or two middle values)
+- determine w/ : $\frac{N + 1}{2}$
+- equal to 50th percentile
+
+### Mean (or arithmetic mean)
+- $\bar{X} = \frac{\sum X}{N}$
+- can be misleading when there are large outliers
+
+### Properties of the Measures of Center
+
+  1. adding or subtracting a constant does the same to the measure of center
+  2. multiplying or dividing by a constant does the same to the measure of center
+
+_Measures of Spread_
+
+Measures of variability aare used to reveal the typical difference between the values in a set of values
+
+Measures of Spread  
+* Range, Quartile  2nd Quartile is the median
+* Quartiles: sort and divide in 4 parts.
+* Frequency distribution reveals the number (percent) of occurrences of each number or set of numbers
+* Range identifies the maximum and minimum values in a set of numbers
+* Standard deviation (or variance) indicates the degree of variation  
+
+
+## Summary statistics
+
+In descriptive statistics, summary statistics are used to summarize a set of observations, in order to communicate the largest amount of information as simply as possible. Statisticians commonly try to describe the observations in:  
+
+* a measure of location, or central tendency, such as the arithmetic mean
+* a measure of statistical dispersion like the standard deviation
+* a measure of the shape of the distribution like skewness or kurtosis
+* if more than one variable is measured, a measure of statistical dependence such as a correlation coefficient
+
+from [Summary statistics - Wikipedia](https://en.wikipedia.org/wiki/Summary_statistics)  
+
+```{r}
+mean(twitter$followers_count)
+range(twitter$followers_count)
+diff(range(twitter$followers_count))
+head(twitter[,"followers_count"])
+median(twitter$followers_count)
+mean(twitter$followers_count)-median(twitter$followers_count)
+var(twitter$followers_count)
+sd(twitter$followers_count)
+sqrt(var(twitter$followers_count))
+summary(twitter$followers_count)
+summary(twitter)
+```
+
+  
+## Univariate Data Analysis
+
+Univariate data analysis-explores each variable in a data set separately. This serves as a good method to check the quality of the data on a variable by variable basis. See [Wikipedia Univariate analysis](https://en.wikipedia.org/wiki/Univariate_analysis)
+
+## Five point summary
+
+Five point summary (min, Q1,Q2,Q3, max)
+
+* the sample minimum (smallest observation)
+* the lower quartile or first quartile
+* the median (middle value)
+* the upper quartile or third quartile
+* the sample maximum (largest observation)
+
+In R the function  `summary()` = provides different output for each variable, depending on type of variable (numeric,factor)
+ 
+ ```{r}
+summary(diamonds$price)
+```
+
+Note that summary can be applied to the whole data set.  
+
+
+ ```{r}
+summary(diamonds)
+```
+
+## Box-Plot
+
+A Box-Plot is a visual representation of a five point summary, with some additional information about outliers (1.5 times the lower and upper quartiles) 
+
+Box-Plot ( < 1.5 times Q1 outliers, expected min, Q1,Q2,Q3, expected max, outliers > 1.5 times Q3)
+
+```{r}
+qplot(1,price, data=diamonds, geom="boxplot")
+```
+
+Box-Plots are useful for comparing five point summary of subsets of a data set confitioned on a factor.  
+```{r}
+qplot(cut,price, data=diamonds, geom="boxplot")
+```
+
+Alternatively it can be written using "layers."
+```{r}
+qplot(cut,carat, data=diamonds)+geom_boxplot()
+```
+
+Reordering a boc-plot.
+
+```{r}
+qplot(reorder(cut,carat),carat, data=diamonds)+geom_boxplot()
+```
+
+Filling by the color of the diamond.
+```{r}
+qplot(cut,carat, data=diamonds,fill=color)+geom_boxplot()
+qplot(cut,carat, data=diamonds,fill=color)+geom_boxplot() + scale_y_log10()
+```
+
+
+## Violin plots
+
+A violin plot is a method of plotting numeric data. It is a box plot with a rotated kernel density plot on each side. The violin plot is similar to box plots, except that they also show the probability density of the data at different values.
+
+```{r}
+qplot(cut,carat, data=diamonds)+geom_violin()
+```
+
+## Saving a graph to a variable
+
+Graph can be saved to a variable to easily play with geom's.  
+
+```{r}
+g<-qplot(cut,carat, data=diamonds)
+g+geom_point()+geom_violin()
+g+geom_violin()+geom_point()
+g+geom_jitter()+geom_point()+geom_violin()
+```
+
+
+## Bar charts
+
+
+A bar chart or bar graph is a chart that presents Grouped data with rectangular bars with lengths proportional to the values that they represent. [Bar chart - Wikipedia](https://en.wikipedia.org/wiki/Bar_chart)  
+  
+```{r}
+qplot(cut, data=diamonds)
+```
+
+We can use an aesthetic mappings (e.g. color, size, shape) to dig deeper in the data by mapping variables to visual properties (aesthetics).   
+
+```{r}
+qplot(cut, data=diamonds, fill=color)
+```
+
+
+_Position Adjustments_  
+
+Position adjustments can be used to fine tune positioning of objects to achieve effects like dodging, jittering and stacking.  
+* position_dodge - Adjust position by dodging overlaps to the side.  
+* position_fill - Stack overlapping objects on top of one another, and standardise to have  
+* position_identity - Don't adjust position  
+* position_stack - Stack overlapping objects on top of one another.  
+* position_jitter - Jitter points to avoid overplotting (we will discuss jitter in the scatter plots section)  
+
+
+```{r}
+qplot(cut, data=diamonds, fill=color, position="stack")
+```
+  _position stack - Stack overlapping objects on top of one another_ stack is the default.
+
+```{r}
+qplot(cut, data=diamonds, fill=color)
+```
+
+```{r}
+qplot(cut, data=diamonds, fill=color, position="dodge")
+```
+  _position dodge - Adjust position by dodging overlaps to the side_
+```{r}
+qplot(cut, data=diamonds, fill=color, position="identity")
+```
+```{r}
+qplot(cut,data=diamonds,fill=color,position = "identity")
+qplot(color,data=diamonds,fill=cut,position = "identity")
+qplot(color,data=diamonds,fill=cut,position = "stack") 
+
+```
+
+  _position identity - Don't adjust position_
+```{r}
+qplot(cut, data=diamonds, fill=color, position="fill")
+```
+  _position fill - Stack overlapping objects on top of one another, and standardise to have_
+
+## Histograms
+
+A histogram is like a bar chart but with continuous variables. To group with divide a continuous variable into intervals called _bins_ then count the number of cases within each bin.
+
+* use bars to reflect counts
+* intervals on the horizontal axis
+* counts on the vertical axis
+
+A histogram is a form of density estimation. That is, the construction of an estimate, based on observed data, of an unobservable underlying probability density function.
+
+Histogram and density plots show the distribution of a single variable. 
+
+```{r}
+qplot(carat, data = diamonds, geom = "histogram")
+```
+
+Playing with the histogram binwidth can reveal interesting aspects of the data.
+
+```{r}
+qplot(carat, data = diamonds, geom = "histogram", binwidth = 0.1,
+  xlim = c(0,3))
+```
+
+```{r}
+qplot(carat, data = diamonds, geom = "histogram", binwidth = 0.5,
+  xlim = c(0,3))
+```
+
+## Density plots
+
+You can use probability densities instead of (or with) frequencies for density estimation
+
+```{r}
+qplot(carat, data = diamonds, geom = "density")
+```
+
+ Mapping a categorical variable to an aesthetic
+ 
+
+```{r}
+qplot(carat, data = diamonds, geom = "density", colour = color)
+```
+
+```{r}
+qplot(depth, data=diamonds)
+qplot(depth, data=diamonds) + xlim(55, 70)
+qplot(depth, data=diamonds, fill=cut) + xlim(55, 70)
+qplot(depth, data=diamonds, fill=cut, geom="density") + xlim(55, 70)
+qplot(depth, data=diamonds, fill=cut, geom="density", alpha=1/4) + xlim(55, 70)
+qplot(depth, data=diamonds, fill=cut, geom="density", alpha=carat) + xlim(55, 70)
+```
+
+## ggplot2 help page
+
+The [ggplot2 help page](http://docs.ggplot2.org/current/) is excellent. For more information on Geoms, Facets, Position adjustments, Themes, Aesthetics with many examples and much more go to the [ggplot2 help page](http://docs.ggplot2.org/current/)
+
+## Using Histograms & Density plots on the Quasi-Twitter data
+ 
+Load and look at the Quasi-Twitter data.  
+
+```{r}
+qplot(x=dob_day, data=twitter)
+
+```
+Notice January 1!  
+
+```{r}
+qplot(x=dob_day, data=twitter)+ facet_wrap(~dob_month) # a grid on one extra variable
+```
+Bad data!!!   
+```{r}
+qplot(x=dob_year, data=twitter)
+```
+
+
+
+```{r}
+qplot(x=dob_day, data=twitter) + scale_x_discrete(breaks=1:31)
+```
+
+
+```{r}
+qplot(x=followers_count, data=twitter,color=I('#17331F'), fill=I('#CC0000'))
+```
+
+Fat-tailed! Log-transform.
+
+```{r}
+qplot(x=log(followers_count+1,2), data=twitter,color=I('#17331F'), fill=I('#CC0000'))
+```
+Zoom in?
+```{r}
+qplot(x=followers_count, data=twitter,xlim=c(0,10000),color=I('#17331F'), fill=I('#CC0000'))
+```
+
+```{r}
+qplot(x=followers_count, data=twitter,color=I('#17331F'), fill=I('#CC0000'))+scale_x_continuous(limits=c(0,5000))
+```
+
+```{r}
+qplot(x=followers_count, data=twitter, binwidth=50,color=I('#17331F'), fill=I('#CC0000'))+scale_x_continuous(limits=c(0,5000), breaks=seq(0,5000,50))
+```
+
+
+
+```{r}
+qplot(x=followers_count, data=twitter,xlim=c(0,10000),geom="density", color=I('#615445'), fill=I('#CC0000'))
+```
+
+
+
+
+```{r}
+by(twitter$followers_count,twitter$gender,summary)
+```
+
+
+
+```{r}
+qplot(gender,followers_count, data =twitter, geom="boxplot",ylim=c(0,10000))+xlab("Gender")
+```
+
+
+
+
+```{r}
+qplot(followers_count, data=twitter,xlim=c(0,10000))
+```
+
+
+
+```{r}
+qplot(followers_count, data=twitter, fill=gender,xlim=c(0,10000))
+```
+
+
+
+```{r}
+qplot(followers_count, data=twitter, fill=gender, position="stack",xlim=c(0,10000))
+```
+
+
+
+```{r}
+qplot(followers_count, data=twitter, fill=gender, position="dodge",xlim=c(0,10000))
+```
+
+
+
+```{r}
+qplot(followers_count, data=twitter, fill=gender, position="identity",xlim=c(0,10000))
+```
+
+
+
+```{r}
+qplot(followers_count, data=twitter, fill=gender, position="fill",xlim=c(0,10000))
+```
+
+
+
+```{r}
+qplot(followers_count, data=twitter, binwidth=50, xlim=c(0,10000), geom="freqpoly", color=gender)
+```
+
+
+
+```{r}
+qplot(wage, data=twitter, binwidth=5, geom="freqpoly", color=gender)
+```
+
+ 
+## Line plots 
+
+Line and path plots are typically used for time series data. Line plots join the points from left to right, while path plots join them in the order that they appear in the dataset (a line plot is just a path plot of the data sorted by x value). 
+
+To show this we'll use the ggplot2 economics dataset, which contains economic time-series data on the US measured over the last 40 years. 
+
+
+```{r}
+data(economics)
+str(economics)
+names(economics)
+```
+
+```{r}
+qplot(date,pop, data=economics)+geom_line()
+```
+
+```{r}
+qplot(date, unemploy / pop, data = economics, geom = "line")
+```
+
+
+
+```{r}
+qplot(date, uempmed, data = economics, geom = "line")
+```
+
+
+## Multivariate Exploritory Data Analysis
+
+Multivariate analysis (MVA) is based on the statistical principle of multivariate statistics, which involves observation and analysis of more than one statistical outcome variable at a time.
+
+- from [Multivariate analysis Wikipedia ](https://en.wikipedia.org/wiki/Multivariate_analysis)
+
+Bivariate analysis is one of the simplest forms of quantitative (statistical) analysis. It involves the analysis of two variables (often denoted as X, Y), for the purpose of determining the empirical relationship between them.
+
+- from [Bivariate analysis Wikipedia ](https://en.wikipedia.org/wiki/Bivariate_analysis)
+
+
+
+## Scatter plot (Bivariate Visualization)
+
+A scatter plot, scatterplot, or scattergraph is a type of mathematical diagram using Cartesian coordinates to display values for two variables for a set of data.
+
+
+```{r}
+# Set a seed value for randomization
+set.seed(333)
+# create some random data
+trails<-333
+r_data <-data.frame(A=rnorm(n=trails,mean=33,sd=3),
+                    B=rnorm(n=trails,mean=33,sd=9),
+                    C=1:trails+rnorm(n=trails,sd=3),
+                    D=1:trails+rnorm(n=trails,sd=3), 
+                    E=1:trails+rnorm(n=trails,sd=33),
+                    F=1:trails+rnorm(n=trails,sd=33),                       
+                    age=factor(sample(c(1,2,3,4),size=trails,replace=T),
+                               levels=c(1,2,3,4),labels=c("Toddler","Child","Teen","Adult")),
+                    gender=factor(sample(c(1,2),size=trails,replace=T),
+                                  levels=c(1,2),labels=c("Male","Female")),
+                    wealth=factor(sample(c(1,2,3),size=trails,replace=T), levels=c(1,2,3),labels=c("Poor","Middle","Rich")))
+
+```
+
+_Scatter Plot with No apparent relationship_
+
+```{r}
+qplot(A,B, data=r_data) # random 
+```
+
+
+```{r}
+qplot(A,B, data=r_data) + geom_point(shape=r_data$gender)
+```
+
+_Scatter Plot with Linear relationship_
+
+```{r}
+A<-1:trails
+B<-A*5
+r_linear<-data.frame(A,B)
+qplot(A,B, data=r_linear) # linear
+```
+
+_Scatter Plot with Quadratic relationship_
+
+```{r}
+B<-A^2
+r_llog<-data.frame(A,B)
+qplot(A,B, data=r_llog) # quadratic
+qplot(log(A,2),log(B,2), data=r_llog) # log-log
+```
+
+_Scatter plot with Homoscedastic relationship_
+
+In statistics, a sequence or a vector of random variables is homoscedastic /??ho??mo??sk??'d?st??k/ if all random variables in the sequence or vector have the same finite variance. This is also known as homogeneity of variance. The complementary notion is called heteroscedasticity. 
+
+- from [Homoscedasticity](https://en.wikipedia.org/wiki/Homoscedasticity)
+
+
+```{r}
+qplot(C,D, data=r_data) #  homoscedastic 
+```
+
+
+
+```{r}
+qplot(E,F, data=r_data) + geom_point(shape=1)  #  homoscedastic 
+```
+
+_Scatter Plot with Regression Lines_
+
+
+Homoscedasticity means that the variance around the regression line is the same for all values of the predictor variable as in the graph below. 
+
+
+```{r}
+qplot(E,F, data=r_data) + geom_point(shape=2) + geom_smooth(method=lm)
+```
+
+
+
+```{r}
+qplot(E,F, data=r_data) + geom_point(shape=3) + geom_smooth(method=lm, se=FALSE)
+```
+
+
+
+```{r}
+qplot(E,F, data=r_data) + geom_point(shape=4) + geom_smooth()
+```
+
+
+
+```{r}
+qplot(E,F, data=r_data,colour=gender)
+```
+
+
+_Scatter plot with Jittering_
+
+Integer data points can stack on top of one another hiding the distribution.  
+
+```{r}
+str(mpg)
+names(mpg)
+qplot(cty,hwy,data=mpg) 
+qplot(cty,hwy,data=mpg,position = "jitter")
+qplot(cty,hwy,data=mpg,position = "jitter") # jitter changes
+```
+
+
+## Playing with scatter plots 
+
+
+The scatter diagram or scatter plot is the workhorse bivariate and multivariate plots. Let's play with scatter plots a bit.
+
+
+```{r}
+qplot(carat, price, data = diamonds)
+```
+
+
+
+```{r}
+qplot(log(carat,2), log(price,2), data = diamonds)
+```
+
+
+
+```{r}
+qplot(carat, x * y * z, data = diamonds)
+```
+
+
+
+```{r}
+qplot(carat, price, data = diamonds, colour = color)
+```
+
+
+
+```{r}
+qplot(carat, price, data = diamonds, shape = cut)
+```
+
+
+
+```{r}
+qplot(carat, price, data = diamonds, geom = c("point", "smooth"))
+qplot(carat, price, data = diamonds, geom = "smooth")
+qplot(carat, price, data = diamonds)+geom_smooth()
+
+```
+
+
+
+```{r}
+qplot(carat, price, data = diamonds, geom = c("point", "smooth"),
+  span = 0.2)
+```
+
+
+
+
+```{r}
+qplot(color, price / carat, data = diamonds, geom = "jitter",
+  alpha = I(1 / 50))
+```
+
+#### Faceting and scaling
+
+One option we could use is to color-code the points by their clarity. Here, we pass another `col=` argument with the variable we'd like to use for color-coding:
+
+```{r}
+qplot(carat, price, data = diamonds, col = clarity)
+```
+
+## Faceting 
+
+Facets display subsets of the dataset in different panels.  
+
+* facet_grid - Lay out panels in a grid.
+* facet_null - Facet specification: a single panel.
+* facet_wrap - Wrap a 1d ribbon of panels into 2d.
+* label_both -Label facets with value and variable.
+* label_bquote - Label facet with 'bquoted' expressions
+* label_parsed - Label facets with parsed label.
+* label_value - Label facets with their value
+
+```{r }
+qplot(carat, price, data = diamonds, facets = ~ clarity)
+```
+
+
+```{r facetcol}
+qplot(carat, price, data = diamonds, facets = ~ color)
+```
+
+## QQplot
+
+In statistics, a Q-Q plot ("Q" stands for quantile) is a probability plot, which is a graphical method for comparing two probability distributions by plotting their quantiles against each other. 
+
+from [Q-Q plot - Wikipedia](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot)  
+
+One of the first things we may ask about data is whether it deviates from an expectation to be normally distributed. The quantile-quantile (QQ) plot is a way to see whether the data deviate from  normal (the plot can be set up to see if the data deviate from other distributions as well). 
+
+The process R goes through for creating a QQ plot involves determining what proportion  of the 'observed' scores fall below any one score, then the $Z$-score that would fit that proportion if  the data were normally distributed is calculated, and finally that $Z$-score that would cut off  that proportion (the 'expected normal value') is translated back into the original metric to 
+see what raw score that would be. 
+
+A scatter plot is then created that shows the relationship between the actual 'observed' values  and what those values would be 'expected' to be if the data were normally distributed. 
+
+
+```{r}
+
+qqnorm(r_data$A)
+qqline(r_data$A)
+```
+
+help(qqnorm)
+
+```{r}
+
+qqnorm(r_linear$A)
+qqline(r_linear$A)
+```
+
+
+
+help(qqnorm)
+
+```{r}
+
+qqnorm(r_llog$B)
+qqline(r_llog$B)
+```
+
+
+help(qqnorm)
+
+```{r}
+
+qqnorm(twitter$followers_count)
+qqline(twitter$followers_count)
+```
+
+
+
+In statistics, a sequence or a vector of random variables is homoscedastic  if all random variables in the sequence or vector 
+
+have the same finite variance.
+
+## Homework Question 2
+
+_Exploratory Data Analysis assignment_
+
+* Load the file M01_quasi_twitter.csv
+* Answer the following questions for the data in each column:
+    * How is the data distributed?
+    * Test distribution assumptions (e.g. normal distributions or skewed?)
+    * What are the summary statistics?
+    * Are there anomalies/outliers?
+* identify useful raw data & transforms (e.g. log(x))
+* identify data quality problems
+* identify outliers
+* identify subsets of interest
+* suggest functional relationships
+
+_Write your analysis up as an RMA file._
+
+```
+
+
+
+
+
+
+```

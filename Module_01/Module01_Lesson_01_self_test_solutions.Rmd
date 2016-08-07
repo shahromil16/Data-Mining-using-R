@@ -1,0 +1,159 @@
+---
+title: "Module01_Lesson_01_self_test_solutions.Rmd"
+output: html_document
+---
+For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+# Running and showing code   
+
+**Question:** Use the cars data to show a summary along with the code to do that: 
+Show code 
+``` 
+Answer:
+```
+
+```{r}
+summary(cars)
+```
+
+**Question:** Use the same data and plot it, but this time, don't show code:
+``` 
+Answer:
+```
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+
+# Writing text in RMarkdown 
+
+**Question:** Insert an image and write a paragraph underneath it, using bold and italics at least once each. Make sure the image is visible in the RMarkdown file.
+when after you click Knit HTML. Don't just show the link to the image. 
+
+
+``` 
+Answer:
+```
+
+
+
+![image in R Studio"](http://54.88.34.236/YouTube/MachineLearning/M01/M01_A.png)
+
+
+</br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; R *Markdown* is an **authoring** format that enables easy creation of dynamic documents, presentations, and reports from R. It combines the core syntax of markdown (an easy-to-write plain text format) with embedded R code chunks that are run so their output can be included in the final document. R Markdown documents are fully reproducible (they can be automatically regenerated whenever underlying R code or data changes).
+
+</br>
+
+**Question:** Write a bulleted list with 4 elements for the bullets.   
+This is a bulleted list:  
+
+``` 
+Answer:
+```
+* Element 1
+* Element 2
+* Element 3
+* Element 4
+
+</br>
+
+# Writing equations in RMarkdown 
+**Question:** Write a math equation that uses a sum of n, starting at i=1, a square root, and at least one variable with a subscript. 
+</br>
+
+
+``` 
+Answer:
+```
+$$\sum_{i=1}^{n} \sqrt{4b^2_i + K_x}$$
+
+
+## The Basics of LaTeX
+**Question:** Assign x to be 1:5 and y to be round(rnorm(5, x, 1), 2). Create a data frame of x and y. Print the data frame, all in the correct r output for an RMarkdown file. 
+er: 
+
+``` 
+Answer:
+```
+``` {r}
+    x <- 1:5
+    y <- round(rnorm(5, x, 1), 2)
+    dataframe <- data.frame(x, y)
+    dataframe
+```    
+
+
+**Question:** Create a superscript X squared and a subscript Yi.
+
+
+``` 
+Answer:
+```
+$$X^2$$
+$$Y_i$$
+
+  
+   
+
+**Question:** Write the Greek letters alpha, beta, gamma, Gamma. 
+
+``` 
+Answer:
+```
+$$\alpha, \beta,  \gamma, \Gamma$$
+  
+```
+
+
+
+
+
+
+```
+  
+  
+  
+## Typesetting Equations
+**Question:** With the following information, create a summation equation in display and then inline form. 
+n, i = 4, sum of X
+
+``` 
+Answer: 
+```
+$$\sum_{i=4}^n X$$
+
+$\sum_{i=4}^n X$
+
+
+**Question:** Write a 3 by 3 matrice consisting of only the variable a. 
+``` 
+Answer: 
+```
+$$\begin{array}
+{rrr}
+a & a & a \\
+a & a & a \\
+a & a & a
+\end{array}
+$$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
